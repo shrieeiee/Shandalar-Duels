@@ -431,7 +431,7 @@ body.cb #duelView .pip,body.cb #modal .pip{font-size:13px}
 }
 /* ===== v37 original-style duel layout: left panel + wide board ===== */
 #duelView.table{grid-template-columns:248px minmax(0,1fr);gap:14px;align-items:start}
-body.fitduel{overscroll-behavior:none}
+body.fitduel{overscroll-behavior:none;overflow:hidden}
 @media (max-height:700px){ body.fitduel .topbar{padding-block:4px;gap:8px} body.fitduel .brand{font-size:18px} body.fitduel .brand small{display:none} :root{--hw:74px;--hh:104px} #duelView.table{gap:8px} .lp{gap:6px} }
 @media (max-height:1000px){ :root{--hw:92px;--hh:130px} .side .row{padding-top:26px;padding-bottom:8px} .side{gap:8px} .pl .life{font-size:50px} .hand{padding-top:8px} }
 .lp{display:flex;flex-direction:column;gap:10px;min-width:0;position:sticky;top:8px}
@@ -4666,21 +4666,26 @@ function renderAdv(){
 function advFit(){ const w=document.querySelector('.advwrap'); if(!w) return; const avail=Math.min(window.innerWidth-24,1000); const sc=avail>=480?Math.floor(avail/(VW*TS)):avail/(VW*TS); w.style.width=Math.round(VW*TS*sc+8)+'px'; }
 typeof window!=='undefined'&&window.addEventListener('resize',()=>{ if(ui.view==='adv') advFit(); });
 /* ----- fit the duel screen to one viewport (desktop 1080p, Android tablets) ----- */
-let _fitZ=1;
-function fitDuel(){
-  if(typeof document==='undefined'||HEADLESS) return;
-  const el=document.getElementById('duelView'); if(!el) return;
-  const on=ui.view==='duel'&&!el.hidden&&innerWidth>=620&&innerHeight>=420;
-  document.body.classList.toggle('fitduel',on);
-  if(!on){ el.style.zoom=''; return; }
-  const top=el.getBoundingClientRect().top+(window.scrollY||0); const avail=innerHeight-top-8;
-  let z=_fitZ||1;
-  for(let i=0;i<4;i++){ el.style.zoom=String(+z.toFixed(3)); const h=el.getBoundingClientRect().height; if(h>avail+1||(z<1&&h<avail-14)){ const nz=Math.max(.3,Math.min(1,z*avail/h)); if(Math.abs(nz-z)<.004) break; z=nz; } else break; }
-  _fitZ=z; el.style.zoom=z>=.999?'':String(+z.toFixed(3));
-  const fits=el.getBoundingClientRect().bottom<=innerHeight+2; document.body.style.overflowY=fits?'hidden':'';
-  if(fits) window.scrollTo(0,0);
+let _fitZ=1, _fitKey='', _fitBusy=false;
+function fitDuel(){ if(typeof document==='undefined'||HEADLESS||_fitBusy) return;
+  const el=document.getElementById('duelView'); if(!el) return; _fitBusy=true;
+  try{
+    const on=ui.view==='duel'&&!el.hidden&&innerWidth>=620&&innerHeight>=420;
+    document.body.classList.toggle('fitduel',on);
+    if(!on){ el.style.zoom=''; _fitZ=1; _fitKey=''; return; }
+    // deterministic: zoom depends only on viewport + current content (no feedback from the previous zoom)
+    el.style.zoom='';
+    const t0=el.getBoundingClientRect().top+(window.scrollY||0); const avail=innerHeight-t0-8; const h1=el.getBoundingClientRect().height;
+    let z=h1>avail?Math.max(.3,avail/h1):1;
+    if(z<1){ z=Math.floor(z*50)/50; el.style.zoom=String(z); const h=el.getBoundingClientRect().height; if(h>avail+1) z=Math.max(.3,Math.floor(z*avail/h*50)/50); }
+    if(Math.abs(z-_fitZ)<.035&&z<1&&_fitZ<1){ z=Math.min(z,_fitZ); } // hysteresis: ignore tiny content-driven wobble
+    _fitZ=z; el.style.zoom=z>=.999?'':String(z);
+    if(window.scrollY) window.scrollTo(0,0);
+  } finally { _fitBusy=false; }
 }
-if(typeof window!=='undefined'){ const _r0=render; render=function(){ _r0(); fitDuel(); }; window.addEventListener('resize',()=>{ _fitZ=1; fitDuel(); }); window.addEventListener('orientationchange',()=>setTimeout(()=>{ _fitZ=1; fitDuel(); },250)); }
+if(typeof window!=='undefined'){ const _r0=render; render=function(){ _r0(); fitDuel(); }; let _rt=0, _lw=innerWidth, _lh=innerHeight;
+  const sched=()=>{ clearTimeout(_rt); _rt=setTimeout(()=>{ if(Math.abs(innerWidth-_lw)<3&&Math.abs(innerHeight-_lh)<3) return; _lw=innerWidth; _lh=innerHeight; _fitZ=1; fitDuel(); },140); };
+  window.addEventListener('resize',sched); window.addEventListener('orientationchange',()=>{ clearTimeout(_rt); _rt=setTimeout(()=>{ _lw=innerWidth; _lh=innerHeight; _fitZ=1; fitDuel(); },300); }); }
 function advShow(){
   if(!$('#advCanvas')) renderAdv();
   advFit();
