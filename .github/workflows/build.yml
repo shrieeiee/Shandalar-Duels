@@ -5,9 +5,9 @@ jobs:
   desktop:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
       - name: Stage game
         run: cp web/index.html electron/index.html
       - run: cd electron && npm install --no-audit --no-fund && npm run pack:linux && npm run pack:win
@@ -15,7 +15,7 @@ jobs:
         run: |
           cp electron/shandalar.sh "dist/Shandalar Duels-linux-x64/" && chmod +x "dist/Shandalar Duels-linux-x64/shandalar.sh"
           cd dist && zip -qr Shandalar-Duels-linux-steamos-x64.zip "Shandalar Duels-linux-x64" && zip -qr Shandalar-Duels-windows-x64.zip "Shandalar Duels-win32-x64"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with: { name: desktop-builds, path: dist/*.zip }
       - if: github.event_name == 'release' || inputs.tag != ''
         run: gh release upload "${{ github.event.release.tag_name || inputs.tag }}" dist/*.zip --clobber --repo "${{ github.repository }}"
@@ -23,8 +23,8 @@ jobs:
   android:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with: { distribution: temurin, java-version: 17 }
       - name: Accept Android licenses (SDK is preinstalled on the runner)
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
@@ -33,7 +33,7 @@ jobs:
       - name: Stage game
         run: mkdir -p android/app/src/main/assets && cp web/index.html android/app/src/main/assets/index.html
       - run: cd android && gradle assembleDebug --no-daemon
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with: { name: Shandalar-Duels-apk, path: android/app/build/outputs/apk/debug/app-debug.apk }
       - if: github.event_name == 'release' || inputs.tag != ''
         run: cp android/app/build/outputs/apk/debug/app-debug.apk Shandalar-Duels-android-debug.apk && gh release upload "${{ github.event.release.tag_name || inputs.tag }}" Shandalar-Duels-android-debug.apk --clobber --repo "${{ github.repository }}"

@@ -1239,8 +1239,9 @@ D({id:'energy_flux',name:'Energy Flux',cost:'2U',type:'Enchantment',ai:'none',te
 Cr('rukh_egg','Rukh Egg','3R','Bird Egg',0,3,[],'When Rukh Egg dies, create a 4/4 red Bird creature token with flying at the beginning of the next end step.',{onDie:(c,own)=>{ (g.eotTokens=g.eotTokens||[]).push({owner:own,id:'bird_token'}); }});
 D({id:'the_hive',name:'The Hive',cost:'5',type:'Artifact',ai:'artifact',aiScore:10,text:"{5}, {T}: Create a 1/1 colorless Insect artifact creature token with flying named Wasp.",abilities:[{cost:'5',tap:true,resolve:x=>makeToken(x.ctrl,'wasp_token')}]});
 D({id:'primal_clay',name:'Primal Clay',cost:'4',type:'Artifact Creature',sub:'Shapeshifter',p:3,t:3,ai:'creature',text:'As Primal Clay enters, it becomes your choice of a 3/3 artifact creature, a 2/2 artifact creature with flying, or a 1/6 Wall artifact creature with defender.',
-  etb:async x=>{ const c=x.src; c.form={p:3,t:3}; if(aiQ(x.ctrl)||HEADLESS) return; const m=await askChoice('Primal Clay','Choose what Primal Clay becomes.',[['a','3/3 artifact creature'],['b','2/2 with flying'],['c','1/6 Wall with defender']]);
-    if(m==='b'){ c.form={p:2,t:2}; c.grantKw=['flying']; } else if(m==='c'){ c.form={p:1,t:6}; c.grantKw=['defender']; } log(`Primal Clay becomes a ${c.form.p}/${c.form.t}.`); }});
+  etb:async x=>{ const c=x.src; c.form={p:3,t:3}; let m='a'; if(aiQ(x.ctrl)||HEADLESS){ const me=x.ctrl, O=1-me, opp=g.bf.filter(k=>isCreature(k)&&ctrl(k)===O), atk=opp.reduce((a,k)=>a+Math.max(0,pow(k)),0), big=opp.some(k=>pow(k)>=4); const air=opp.some(k=>hasKw(k,'flying')||hasKw(k,'reach')); if(g.players[me].life<=atk*2&&atk>=4&&big) m='c'; else if(!air&&g.players[O].life<=14) m='b'; }
+    else m=await askChoice('Primal Clay','Choose what Primal Clay becomes.',[['a','3/3 artifact creature'],['b','2/2 with flying'],['c','1/6 Wall with defender']]);
+    if(m==='b'){ c.form={p:2,t:2}; c.grantKw=['flying']; } else if(m==='c'){ c.form={p:1,t:6}; c.grantKw=['defender']; c.d={...c.d,sub:'Shapeshifter Wall'}; } log(`Primal Clay becomes a ${c.form.p}/${c.form.t}.`); }});
 
 // ===== Batch 17: land-type effects, aura hooks =====
 const animAura=c=>c.zone==='bf'&&/Artifact/.test(c.d.type)&&!/Creature/.test(c.d.type)&&g.bf.some(a=>a.attachedTo===c.iid&&a.d.aura&&a.d.aura.animate);
