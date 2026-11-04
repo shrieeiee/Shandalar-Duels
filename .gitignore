@@ -1,0 +1,6 @@
+node_modules/
+dist/
+electron/index.html
+android/app/src/main/assets/index.html
+android/app/build/
+android/.gradle/
