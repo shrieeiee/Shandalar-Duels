@@ -10,6 +10,10 @@ Classic-rules Magic duels with a Shandalar-style adventure mode, deck builder, p
 Steam Deck: unzip the Linux build, add `shandalar.sh` as a Non-Steam Game, use the Keyboard (WASD) + Mouse Steam Input template.
 Friend duels: one-code rooms only work on the claude.ai-hosted version; elsewhere use *Manual codes*.
 
+## Card art (desktop builds)
+
+The game has its own built-in artwork. In the Windows/Linux/SteamOS builds, open **Adventure → Menu → Card art** (or the *Card art* tab) and press **Download** to fetch real card pictures from Scryfall into the game's data folder. They are for your own use and are never bundled or committed. Cards without a picture keep the built-in art. The web and Android builds use the built-in art only.
+
 ## Licence and disclaimer
 
 The code is released under the **GNU General Public License v3.0** (see `LICENSE`). Copyright (C) 2026 shrieeiee.

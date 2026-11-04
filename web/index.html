@@ -428,6 +428,79 @@ body.cb #duelView .pip,body.cb #modal .pip{font-size:13px}
   #duelView .pip{width:20px;height:20px;font-size:12px}
   .hc .nm{font-size:12px}
 }
+/* ===== v37 original-style duel layout: left panel + wide board ===== */
+#duelView.table{grid-template-columns:248px minmax(0,1fr);gap:14px;align-items:start}
+.lp{display:flex;flex-direction:column;gap:10px;min-width:0;position:sticky;top:8px}
+.pl{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:16px;background:rgba(10,16,22,.72);border:1px solid rgba(255,255,255,.1)}
+.pl.opp{box-shadow:inset 3px 0 0 rgba(208,86,59,.75)}
+.pl.me{box-shadow:inset 3px 0 0 rgba(93,162,240,.8)}
+.pl.act{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc),0 0 16px rgba(242,204,92,.28)}
+.pl .who{flex-direction:row-reverse;justify-content:space-between;background:none;border:0;padding:0;border-radius:10px;gap:8px;align-items:center}
+.pl .who.valid{box-shadow:0 0 0 3px var(--glow),0 0 18px var(--glow);border-radius:12px}
+.pl .pname{font:700 14px/1.15 var(--ui);min-width:0;overflow:hidden}
+.pl .pname small{font-size:11px;font-weight:500;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl .life{font:400 60px/1 var(--display);color:#f6d561;text-shadow:0 2px 0 #3a2a08,0 0 14px rgba(246,213,97,.25);min-width:0;letter-spacing:-.01em}
+.pl .life.low{color:#ff7a5f;text-shadow:0 2px 0 #3b0f06,0 0 14px rgba(255,100,70,.35)}
+.zrow{display:flex;gap:10px;align-items:center}
+.lib{position:relative;width:46px;height:64px;flex-shrink:0}
+.lib::before,.lib i{content:"";position:absolute;inset:0;border-radius:6px;border:2px solid #7d5a2a;background:repeating-linear-gradient(45deg,#3b2a18 0 5px,#4a3520 5px 10px)}
+.lib:empty::before,.lib.zero::before{opacity:.25}
+.lib i:nth-child(1){transform:translate(3px,-3px)}
+.lib i:nth-child(2){transform:translate(6px,-6px)}
+.lib i:nth-child(3){transform:translate(9px,-9px)}
+.lib::before{transform:none}
+.lib b{position:absolute;inset:0;display:grid;place-items:center;font:800 17px/1 var(--head);color:#fff;text-shadow:0 1px 3px #000,0 0 6px #000;z-index:4}
+.lib{margin:0 10px 8px 0}
+.pl .zinfo{flex-direction:column;gap:5px;align-items:flex-start}
+.pl .zbtn{white-space:nowrap}
+.poolcol{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.pr{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0 4px;border-radius:10px;background:rgba(255,255,255,.04);opacity:.5}
+.pr.on{opacity:1;background:rgba(246,213,97,.16);box-shadow:inset 0 0 0 1px rgba(246,213,97,.55)}
+.pr b{font:800 14px/1 var(--ui);font-variant-numeric:tabular-nums}
+.pr .pip{width:22px;height:22px}
+.prev-panel{padding:8px}
+.prev-panel .big{max-width:none;width:100%}
+.prev-panel h3{display:none}
+.chain{padding:8px 12px 10px;border-radius:14px;background:rgba(242,204,92,.07);border:1px solid rgba(242,204,92,.35)}
+.chain h3{margin:0 0 6px;font:800 10px/1 var(--ui);letter-spacing:.14em;text-transform:uppercase;color:var(--acc)}
+.chain .stack{display:flex;gap:8px;flex-wrap:wrap}
+.chain .sitem{font:700 13px/1.25 var(--ui);padding:6px 10px}
+.foot{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:12px}
+.foot .log{max-height:130px}
+.hand{padding:12px 6px 8px;background:linear-gradient(0deg,rgba(0,0,0,.28),transparent);border-radius:14px;gap:10px}
+@media (max-width:1100px){
+  #duelView.table{grid-template-columns:210px minmax(0,1fr);gap:10px}
+  .pl .life{font-size:48px}
+}
+@media (max-width:900px){
+  #duelView.table{grid-template-columns:minmax(0,1fr);gap:10px}
+  .lp,.board{display:contents}
+  .lp{position:static}
+  .pl.opp{order:1}.side.opp{order:2}.chain{order:3}.mid{order:4}.side.me{order:5}.pl.me{order:6}.hand{order:7}.foot{order:8}
+  .prev-panel{display:none}
+  .pl{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 10px}
+  .pl .who{flex-direction:row;gap:12px}
+  .pl .life{font-size:40px}
+  .zrow{gap:6px}
+  .lib{width:30px;height:42px;margin:0 8px 6px 0}.lib b{font-size:13px}
+  .pl .zinfo{flex-direction:row;flex-wrap:wrap;gap:6px;align-items:center}
+  .poolcol{grid-template-columns:repeat(6,minmax(30px,1fr));flex:1 1 200px}
+  .foot{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:560px){
+  .pl .life{font-size:34px}
+  .pr .pip{width:18px;height:18px;font-size:11px}
+  .pr{padding:3px 0}
+}
+
+/* downloaded card art */
+.art{position:relative}
+.art .aimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#222}
+.card.scan{background:none;border:0;box-shadow:none;border-radius:4.5%;overflow:visible;aspect-ratio:5/7}
+.card.scan .simg{width:100%;height:100%;display:block;border-radius:4.5%;box-shadow:0 4px 14px rgba(0,0,0,.55)}
+.card.scan .pt{right:6%;bottom:5%}
+.artbar{height:10px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden;margin:6px 0}
+.artbar i{display:block;height:100%;background:var(--acc);transition:width .3s}
 </style>
 
 <div id="app">
@@ -438,6 +511,7 @@ body.cb #duelView .pip,body.cb #modal .pip{font-size:13px}
       <button class="tab" data-view="deck" id="tab-deck">Deck builder</button>
       <button class="tab" data-view="duel" id="tab-duel">Duel</button>
       <button class="tab" id="tab-net">Play a friend</button>
+      <button class="tab" id="tab-art" hidden>Card art</button>
       <button class="tab" id="tab-snd" aria-label="Toggle sound">♪ Sound on</button>
     </nav>
   </header>
@@ -2709,7 +2783,43 @@ function hash32(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCode
 function mulberry(a){ return ()=>{ a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return((t^(t>>>14))>>>0)/4294967296; }; }
 const ARTPAL={W:['#fbf3d6','#e2c978','#8f7638'],U:['#bcdcf6','#5b93cf','#1b3a68'],B:['#8c7b86','#43383f','#110c10'],R:['#fbc08f','#d4552f','#541a0d'],G:['#c3e3a2','#58a05a','#17391c'],A:['#e9e3d7','#9d9285','#3b342d'],L:['#eadcae','#9a8758','#43381f']};
 const artCache={};
+/* ---- downloaded card art (desktop builds only; the player's own cache, never bundled) ---- */
+const HAS_NATIVE=(typeof window!=='undefined')&&!!window.shNative;
+const ART={have:new Set(),on:HAS_NATIVE,busy:false,last:null};
 function artHTML(d){
+  const h=artSVG(d);
+  if(ART.have.has(d.id)) return h.replace(/<\/svg><\/div>$/,`</svg><img class="aimg" src="cardart://img/${d.id}.jpg" alt="" decoding="async" onerror="this.remove()"></div>`);
+  return h;
+}
+function bigCard(d,c){
+  if(ART.have.has(d.id+'_full')){
+    const pt=(c&&c.zone==='bf'&&isCreature(c))?ptHTML(c):'';
+    return `<div class="card big scan f-${frameOf(d)}"><img class="simg" src="cardart://img/${d.id}_full.jpg" alt="${esc(d.name)}" onerror="this.closest('.scan').outerHTML=''">${pt}</div>`;
+  }
+  return cardFace(d,'','big','',c&&c.zone==='bf'?c:null);
+}
+async function artRefresh(){ if(!HAS_NATIVE) return; try{ ART.have=new Set(await shNative.artList()); }catch(e){} }
+function artCards(){ const seen=new Set(),o=[]; for(const d of Object.values(DB)){ if(!d||!d.id||seen.has(d.id)||/^token/.test(d.id)) continue; seen.add(d.id); o.push({id:d.id,name:d.name}); } return o; }
+function artModal(msg){
+  const all=artCards(), n=all.filter(c=>ART.have.has(c.id)).length;
+  const p=ART.last||{};
+  const pct=p.total?Math.round(100*p.done/p.total):0;
+  openModal(`<h2>Card art</h2>
+   <p>Downloads real card pictures to this computer so cards in the duel screen, deck builder and card preview show their artwork. Nothing is bundled with the game: each picture is fetched from Scryfall for your own use and stored in the game's data folder. Cards without a picture keep the built-in artwork.</p>
+   <p><b>${n}</b> of ${all.length} cards have art${ART.busy||n?'':' (the download takes a few minutes)'}.</p>
+   ${ART.busy||p.finished?`<div class="artbar"><i style="width:${p.finished&&!p.error?100:pct}%"></i></div><p class="muted" id="artmsg">${esc(p.msg||'Starting…')}${p.missing?` · ${p.missing} cards not found`:''}${p.failed?` · ${p.failed} failed`:''}</p>`:''}
+   <div class="hrow">${ART.busy?'<button class="btn ghost" data-x="cancel">Cancel</button>':`<button class="btn" data-x="go">${n?'Download missing art':'Download card art'}</button>`}
+   <button class="btn ghost" data-x="folder">Open folder</button>${n&&!ART.busy?'<button class="btn ghost" data-x="clear">Delete art</button>':''}<button class="btn ghost" data-close>Close</button></div>`);
+  ui.modal={kind:'art',onClick:async v=>{
+    if(v==='go'){ ART.busy=true; ART.last={msg:'Starting…',done:0,total:0}; artModal();
+      shNative.onArtProgress(d=>{ ART.last=d; if(d.finished){ ART.busy=false; artRefresh().then(()=>{ if(ui.modal&&ui.modal.kind==='art') artModal(); if(g) render(); if(ui.view==='deck') try{ renderDeck&&renderDeck(); }catch(e){} }); } else if(ui.modal&&ui.modal.kind==='art'){ const b=document.querySelector('.artbar i'), m=document.getElementById('artmsg'); if(b) b.style.width=(d.total?Math.round(100*d.done/d.total):0)+'%'; if(m) m.textContent=d.msg+(d.total?` ${d.done}/${d.total}`:''); } });
+      shNative.artDownload(all); }
+    else if(v==='cancel') shNative.artCancel();
+    else if(v==='folder') shNative.artFolder();
+    else if(v==='clear'){ await shNative.artClear(); await artRefresh(); artModal(); if(g) render(); }
+  }};
+}
+function artSVG(d){
   if(artCache[d.id]) return artCache[d.id];
   const f=(/Land/.test(d.type)&&d.produce)?d.produce[0]:frameOf(d);
   const P=ARTPAL[f]||ARTPAL.A, r=mulberry(hash32(d.id)), n=(a,b)=>+(a+(b-a)*r()).toFixed(1);
@@ -2843,17 +2953,21 @@ function sideHTML(pid){
   const lands=`<div class="row lands" data-zone="Lands" aria-label="${opp?'Opponent':'Your'} lands">${landsHTML(pid)}</div>`;
   const others=ot.length?`<div class="row others ${densCls(ot.length)}" data-zone="Artifacts &amp; enchantments" aria-label="${opp?'Opponent':'Your'} artifacts and enchantments">${othersHTML(pid)}</div>`:'';
   const crow=`<div class="row creatures ${opp?'opp':''} ${densCls(cr.length)}" data-zone="Creatures (${cr.length})" aria-label="${opp?'Opponent':'Your'} creatures">${creaturesHTML(pid)}</div>`;
-  return opp?`<section class="side opp" aria-label="Opponent's side"><div class="pbar">${pbarHTML(1)}</div>${lands}${others}${crow}</section>`
-            :`<section class="side me" aria-label="Your side">${crow}${others}${lands}<div class="pbar">${pbarHTML(0)}</div></section>`;
+  return opp?`<section class="side opp" aria-label="Opponent's side">${lands}${others}${crow}</section>`
+            :`<section class="side me" aria-label="Your side">${crow}${others}${lands}</section>`;
 }
 function poolHTML(pid){ const P=g.players[pid].pool; let s=''; for(const k of [...COLORS,'C']) for(let i=0;i<P[k];i++) s+=pipHTML(k==='C'?'1':k); return s?`<span class="pool" title="Mana pool">${s}</span>`:''; }
-function pbarHTML(pid){
+function plHTML(pid){
   const P=g.players[pid];
   const valid=ui.targeting&&legal(ui.targeting.spec,{kind:'player',pid},ui.targeting.src);
   const sub=pid===0?'You':(g.oppMeta?g.oppMeta.blurb:'Opponent');
-  return `<div class="who ${valid?'valid':''}" data-pid="${pid}"><div class="life ${P.life<=5?'low':''}">${P.life}</div><div class="pname">${esc(P.name)}<small>${esc(sub)}</small></div></div>
-  <div class="zinfo"><span>Library <b>${P.library.length}</b></span>${pid===1?`<span>Hand <b>${P.hand.length}</b></span>`:''}
-  <button class="zbtn" data-gy="${pid}">Graveyard ${P.graveyard.length}</button>${P.exile.length?`<button class="zbtn" data-ex="${pid}">Removed ${P.exile.length}</button>`:''}</div>${poolHTML(pid)}`;
+  const n=P.library.length, layers=n>30?3:n>8?2:n>0?1:0;
+  const lib=`<div class="lib" title="Library: ${n} cards" aria-label="Library ${n} cards">${'<i></i>'.repeat(layers)}<b>${n}</b></div>`;
+  const pool=['B','U','G','R','W','C'].map(k=>{ const v=P.pool[k]||0; return `<div class="pr ${v?'on':''}" title="${v} ${k==='C'?'colourless':PIPNAME[k].toLowerCase()} in pool">${pipHTML(k==='C'?'1':k)}<b>${v}</b></div>`; }).join('');
+  return `<div class="pl ${pid===1?'opp':'me'} ${g.active===pid&&!g.over?'act':''}">
+    <div class="who ${valid?'valid':''}" data-pid="${pid}" title="${esc(P.name)} — click to target"><div class="pname">${esc(P.name)}<small>${esc(sub)}</small></div><div class="life ${P.life<=5?'low':''}" aria-label="${P.life} life">${P.life}</div></div>
+    <div class="zrow">${lib}<div class="zinfo">${pid===1?`<span>Hand <b>${P.hand.length}</b></span>`:''}<button class="zbtn" data-gy="${pid}">Graveyard <b>${P.graveyard.length}</b></button>${P.exile.length?`<button class="zbtn" data-ex="${pid}">Removed <b>${P.exile.length}</b></button>`:''}</div></div>
+    <div class="poolcol" aria-label="Mana pool">${pool}</div></div>`;
 }
 function promptAndActions(){
   const w=ui.wait, mine=g.active===0, top=g.stack[g.stack.length-1];
@@ -2887,12 +3001,18 @@ function render(){
     if(ui.wait&&ui.wait.kind==='discard') cls.push('disc');
     return cardFace(c.d,'',cls.join(' '),`data-hand="${c.iid}" tabindex="0"`);
   }).join('')||'<span class="empty muted">Your hand is empty</span>';
-  const stack=g.stack.map(s=>`<div class="sitem ${s.ctrl!==0?'opp':''} ${isValidTarget({kind:'stack',sid:s.sid})?'valid':''}" data-sid="${s.sid}">${esc(s.name)}${s.targets.length?` <span class="muted">→ ${esc(describeTargets(s.targets))}</span>`:''}</div>`).join('')||'<span class="muted" style="font-size:12px">Empty</span>';
+  const stack=g.stack.slice().reverse().map(s=>`<div class="sitem ${s.ctrl!==0?'opp':''} ${isValidTarget({kind:'stack',sid:s.sid})?'valid':''}" data-sid="${s.sid}">${esc(s.name)}${s.targets.length?` <span class="muted">→ ${esc(describeTargets(s.targets))}</span>`:''}</div>`).join('')||'<span class="muted" style="font-size:12px">Empty</span>';
   const logs=g.log.slice(-90).map(l0=>({...l0,msg:youFix(l0.msg)})).map(l=>l.who==='turn'?`<div class="t">${esc(l.msg)}</div>`:`<div class="${l.who===1?'o':l.who===0?'m':''}">${esc(l.msg)}</div>`).join('');
-  const pv=ui.preview?cardFace(ui.preview.d,'','big','',ui.preview.zone==='bf'?ui.preview:null):'<div class="muted" style="font-size:12px">Hover a card to read it. On a phone, press and hold.</div>';
+  const pv=ui.preview?bigCard(ui.preview.d,ui.preview):'<div class="muted" style="font-size:12px">Hover a card to read it. On a phone, press and hold.</div>';
   $('#duelView').innerHTML=`
+  <div class="lp">
+    ${plHTML(1)}
+    <div class="panel prev-panel"><h3>Card</h3>${pv}</div>
+    ${plHTML(0)}
+  </div>
   <div class="board">
     ${sideHTML(1)}
+    ${g.stack.length?`<div class="chain"><h3>Spell chain · top first</h3><div class="stack">${stack}</div></div>`:''}
     <div class="mid">
       <div><div class="phases">${ph}</div></div>
       <div class="prompt"><div class="turn">Turn ${g.turn} · ${g.active===0?'Your turn':esc(playerName(1))+"'s turn"}</div>${text}</div>
@@ -2900,17 +3020,15 @@ function render(){
     </div>
     ${sideHTML(0)}
     <div class="hand" aria-label="Your hand">${hand}</div>
-  </div>
-  <aside class="rail">
-    <div class="panel prev-panel"><h3>Card</h3>${pv}</div>
-    <div class="panel"><h3>Stack</h3><div class="stack">${stack}</div></div>
-    <div class="panel"><h3>Duel log</h3><div class="log" id="logBox">${logs}</div></div>
-    <div class="panel opts">
-      <label><input type="checkbox" id="optFull" ${ui.fullControl?'checked':''}> Stop at every step</label>
-      <label><input type="checkbox" id="optFast" ${ui.speed<1?'checked':''}> Fast opponent</label>
-      <button class="btn small warn" data-act="concede" ${g.over?'disabled':''}>Concede</button>
+    <div class="foot">
+      <div class="panel"><h3>Duel log</h3><div class="log" id="logBox">${logs}</div></div>
+      <div class="panel opts">
+        <label><input type="checkbox" id="optFull" ${ui.fullControl?'checked':''}> Stop at every step</label>
+        <label><input type="checkbox" id="optFast" ${ui.speed<1?'checked':''}> Fast opponent</label>
+        <button class="btn small warn" data-act="concede" ${g.over?'disabled':''}>Concede</button>
+      </div>
     </div>
-  </aside>`;
+  </div>`;
   const lb=$('#logBox'); if(lb) lb.scrollTop=lb.scrollHeight;
 }
 
@@ -3937,7 +4055,7 @@ function interiorSplash(kind,col,title,sub){ return new Promise(res=>{ openModal
 async function advMenu(){
   if(ADV.mode!=='map'||ADV.mv) return; ADV.mode='busy';
   for(;;){
-    const c=await ask(`Gold ${adv.gold} · Wizards ${advWizards()}/5 · Wins ${adv.wins} · Slot ${advSlot()}`,['Edit deck','Collection','Save game','Export / import saves','Title screen',`Sound: ${SND.on?'on':'off'}`,`Graphics: ${({0:'high',1:'medium',2:'classic'})[advQual()]}${pget('shd-q','auto')==='auto'?' (auto)':''}`,'Accessibility','Close'],'Menu');
+    const c=await ask(`Gold ${adv.gold} · Wizards ${advWizards()}/5 · Wins ${adv.wins} · Slot ${advSlot()}`,['Edit deck','Collection','Save game','Export / import saves','Title screen',`Sound: ${SND.on?'on':'off'}`,`Graphics: ${({0:'high',1:'medium',2:'classic'})[advQual()]}${pget('shd-q','auto')==='auto'?' (auto)':''}`,'Accessibility',...(HAS_NATIVE?['Card art']:[]),'Close'],'Menu');
     if(c===0){ ADV.mode='map'; advEditDeck(); return; }
     if(c===1){ await new Promise(res=>{ const es=Object.entries(adv.coll).filter(([i,n])=>n>0).map(([i,n])=>[DB[i],n]).sort((a,b)=>SORTKEY(a[0])-SORTKEY(b[0])); openModal(`<h2>Your collection (${es.reduce((s,e)=>s+e[1],0)} cards)</h2><div class="mgrid shop">${es.map(([d,n])=>`<div class="shopc">${cardFace(d,'','hc','')}<div class="pr">×${n}</div></div>`).join('')}</div><button class="btn ghost" data-close>Close</button>`); ui.onModalClose=res; }); }
     else if(c===2){ advSave(); await say('Game saved.'); }
@@ -3946,6 +4064,7 @@ async function advMenu(){
     else if(c===5){ sndGesture(); sndSet(!SND.on); }
     else if(c===6){ const p=pget('shd-q','auto'); const nx={auto:'high',high:'classic',classic:'auto'}[p]; pset('shd-q',nx); ADV.qa=0; ADV.ew=16; }
     else if(c===7){ await advA11yMenu(); }
+    else if(c===8&&HAS_NATIVE){ await new Promise(res=>{ artModal(); ui.onModalClose=res; }); }
     else break;
   }
   ADV.mode='map';
@@ -3975,7 +4094,7 @@ function advTitle(){
     ${sv?`<div class="cont"><div><b>Continue slot ${cur}</b><span>${sv.gold} gold · ${wz(sv)}/5 wizards defeated</span></div><button class="btn" data-adv="cont">Continue</button><button class="btn ghost small" data-adv="del">Delete</button></div>`:''}
     <h3>${sv?`Or start fresh in slot ${cur} (overwrites it)`:'Choose your starting colour'}</h3>
     <div class="acolors">${REGS.map(k=>`<button data-adv="new" data-id="${k}" style="background:linear-gradient(160deg,${BL[k][1].split(',')[0]}66,${BL[k][1].split(',')[1]}dd)">${pipHTML(k)}<span>${CNAME[k]}</span><small>${BL[k][0]}</small></button>`).join('')}</div>
-    <div class="hrow" style="justify-content:center;margin-top:10px"><button class="btn ghost small" data-adv="saves">Export / import saves</button><button class="btn ghost small" data-adv="a11y">Accessibility</button></div></div>`);
+    <div class="hrow" style="justify-content:center;margin-top:10px"><button class="btn ghost small" data-adv="saves">Export / import saves</button><button class="btn ghost small" data-adv="a11y">Accessibility</button>${HAS_NATIVE?'<button class="btn ghost small" data-adv="art">Card art</button>':''}</div></div>`);
   ui.modal={kind:'ask',onClick:()=>{}}; ui.titleOpen=true; ui.cfNew=null; ui.cfDel=false;
 }
 function advUnstick(){
@@ -3992,6 +4111,7 @@ function advClick(el){
   if(a==='choice'){ if(ADV.dlg){ ADV.dlg.sel=+id; dlgAct(); } return; }
   if(a==='slot'){ pset('shd-slot',id); advTitle(); return; }
   if(a==='del'){ if(!ui.cfDel){ ui.cfDel=true; toast(`Click Delete again to erase slot ${advSlot()}.`); return; } try{ localStorage.removeItem(advKeyFor(advSlot())); }catch(e){} advTitle(); return; }
+  if(a==='art'){ artModal(); ui.onModalClose=()=>advTitle(); return; }
   if(a==='saves'){ ui.savesBack=()=>advTitle(); advSavesModal(); return; }
   if(a==='a11y'){ const cb=pget('shd-cb','off'), rm=pget('shd-rm','auto'); pset('shd-cb',cb==='on'?'off':'on'); if(rm==='auto'&&false) pset('shd-rm','on'); applyA11y(); toast(`Colour-blind pips: ${cb==='on'?'off':'on'}. (More options in the in-game menu → Accessibility.)`); return; }
   if(a==='new'){ if(advLoad()&&ui.cfNew!==id){ ui.cfNew=id; toast(`Slot ${advSlot()} has a save. Click again to overwrite it.`); return; } if(!MAP) MAP=genMap(); advNew(id); advBegin(); return; }
@@ -4564,6 +4684,7 @@ function sndInit(){ if(SND.ctx||typeof window==='undefined') return; try{ const 
   SND.mus=SND.ctx.createGain(); SND.mus.gain.value=.8; SND.mus.connect(SND.master); SND.fx=SND.ctx.createGain(); SND.fx.gain.value=1; SND.fx.connect(SND.master);
   const nb=SND.ctx.createBuffer(1,SND.ctx.sampleRate*.5,SND.ctx.sampleRate); const d=nb.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; SND.noise=nb;
   SND.timer=setInterval(sndTick,90); }catch(e){ SND.ctx=null; } }
+if(HAS_NATIVE){ const tb=document.getElementById('tab-art'); if(tb) tb.hidden=false; artRefresh().then(()=>{ try{ if(typeof g!=='undefined'&&g) render(); }catch(e){} }); }
 function sndSet(on){ SND.on=on; try{ localStorage.setItem('shd-snd',on?'1':'0'); }catch(e){} if(SND.master) SND.master.gain.setTargetAtTime(on?.32:0,SND.ctx.currentTime,.05); const b=document.getElementById('tab-snd'); if(b) b.textContent=on?'♪ Sound on':'♪ Sound off'; }
 function sndTone(f,t,dur,type,vol,dest,slide){ const c=SND.ctx; const o=c.createOscillator(), g=c.createGain(); o.type=type; o.frequency.setValueAtTime(f,t); if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(20,slide),t+dur); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vol,t+.012); g.gain.exponentialRampToValueAtTime(.0001,t+dur); o.connect(g); g.connect(dest||SND.mus); o.start(t); o.stop(t+dur+.05); }
 function sndNoise(t,dur,vol,hp){ const c=SND.ctx; const s=c.createBufferSource(); s.buffer=SND.noise; const g=c.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur); const f=c.createBiquadFilter(); f.type=hp?'highpass':'lowpass'; f.frequency.value=hp||1800; s.connect(f); f.connect(g); g.connect(SND.fx); s.start(t); s.stop(t+dur+.02); }
@@ -4614,6 +4735,7 @@ function init(){
     const tab=t.closest('[data-view]'); if(tab){ setView(tab.dataset.view); return; }
     const nt=t.closest('[data-net]'); if(nt){ netClick(nt.dataset.net,nt); return; }
     if(t.closest('#tab-net')){ netOpen(); return; }
+    if(t.closest('#tab-art')){ artModal(); return; }
     if(t.closest('#tab-snd')){ sndGesture(); sndSet(!SND.on); sfx('select'); return; }
     const ad=t.closest('[data-adv]'); if(ad){ advClick(ad); return; }
     const pb=t.closest('[data-padb]'); if(pb){ if(pb.dataset.padb==='a') advAct(); else advMenu(); return; }
@@ -4695,7 +4817,7 @@ function init(){
     if(e.pointerType!=='mouse') return;
     const el=e.target.closest('[data-iid],[data-hand],[data-prev]'); if(!el||ui.view!=='duel'||!g) return;
     const c=el.dataset.prev?null:byIid(+(el.dataset.iid||el.dataset.hand)); if(!c||ui.preview===c) return;
-    ui.preview=c; const pp=document.querySelector('.prev-panel'); if(pp) pp.innerHTML='<h3>Card</h3>'+cardFace(c.d,'','big','',c.zone==='bf'?c:null);
+    ui.preview=c; const pp=document.querySelector('.prev-panel'); if(pp) pp.innerHTML='<h3>Card</h3>'+bigCard(c.d,c);
   });
   let lp=null;
   document.addEventListener('pointerdown',e=>{
@@ -4708,7 +4830,7 @@ function init(){
       else if(g){ c=byIid(+(el.dataset.iid||el.dataset.hand)); d=c&&c.d; }
       if(!d) return;
       ui.suppressClick=true;
-      openModal(`<div style="max-width:280px;width:100%;margin-inline:auto">${cardFace(d,'','big','',c&&c.zone==='bf'?c:null)}</div><button class="btn ghost" data-close>Close</button>`);
+      openModal(`<div style="max-width:280px;width:100%;margin-inline:auto">${bigCard(d,c)}</div><button class="btn ghost" data-close>Close</button>`);
     },480);
   });
   ['pointerup','pointercancel','pointerleave'].forEach(ev=>document.addEventListener(ev,()=>clearTimeout(lp),true));
