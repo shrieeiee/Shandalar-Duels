@@ -516,6 +516,7 @@ body.fitduel{overscroll-behavior:none}
       <button class="tab" data-view="duel" id="tab-duel">Duel</button>
       <button class="tab" id="tab-net">Play a friend</button>
       <button class="tab" id="tab-art" hidden>Card art</button>
+      <button class="tab" id="tab-cred">Credits</button>
       <button class="tab" id="tab-snd" aria-label="Toggle sound">♪ Sound on</button>
     </nav>
   </header>
@@ -3290,6 +3291,17 @@ function toast(msg){ if(HEADLESS) return; const t=$('#toast'); t.textContent=msg
 function openModal(html){ const m=$('#modal'); m.innerHTML=`<div class="mbox" role="dialog" aria-modal="true">${html}</div>`; m.hidden=false;
   for(const el of m.querySelectorAll('[data-x],[data-ask],[data-color],[data-adv],[data-net],[data-gypick]')) if(!/^(BUTTON|INPUT|LABEL|SELECT|TEXTAREA|A)$/.test(el.tagName)){ el.tabIndex=0; el.setAttribute('role','button'); }
   setTimeout(()=>{ const f=m.querySelector('button,[tabindex="0"],input,select,textarea'); if(f&&!m.hidden&&!m.contains(document.activeElement)) try{ f.focus({preventScroll:true}); }catch(e){} },30); }
+function creditsModal(){
+  openModal(`<h2>Credits</h2><div class="credits" style="line-height:1.55;font-size:14px;max-height:62vh;overflow:auto">
+  <p><b>Shandalar Duels</b> &copy; 2026 shrieeiee &middot; GNU GPL v3.0 or later. An unofficial fan project, not affiliated with or endorsed by Wizards of the Coast. <i>Magic: The Gathering</i> and its card names are property of Wizards of the Coast.</p>
+  <p><b>Inspired by</b> <i>Sorcery: The Gathering / Magic: The Gathering &ndash; Shandalar</i> (MicroProse, 1997) and the open-source <b>ShandalarGodot</b> project by b0realis, whose card scripts and documentation guided how many cards and rules were implemented here.</p>
+  <p><b>Pixel art</b> (CC0 / public domain, credit given with thanks):<br>
+  &bull; <b>Tiny Town</b>, <b>Tiny Dungeon</b> and <b>Roguelike pack</b> by <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (kenney.nl), with help from Lynn Evers on the Roguelike pack.</p>
+  <p><b>Character sprites</b> (CC BY 3.0):<br>
+  &bull; <b>Last Guardian sprites</b> by <a href="https://outer-court.com" target="_blank" rel="noopener">Philipp Lenssen</a> (outer-court.com), via OpenGameArt, licensed <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>.</p>
+  <p style="opacity:.75">Card illustrations in the built-in art are procedurally drawn. Optional real card images, if you download them, belong to their artists and Wizards of the Coast.</p></div>
+  <div class="hrow"><button class="btn ghost" data-close>Close</button></div>`);
+}
 function closeModal(){ const m=$('#modal'); m.hidden=true; m.innerHTML=''; ui.modal=null; if(ui.onModalClose){ const f=ui.onModalClose; ui.onModalClose=null; f(); } if(ui.targeting&&ui.targeting.gy){ ui.targeting=null; render(); } }
 function startTargeting(spec,src,label,done){
   if(!anyLegal(spec,src)){ toast('There is no legal target.'); return; }
@@ -5016,6 +5028,7 @@ function init(){
     const nt=t.closest('[data-net]'); if(nt){ netClick(nt.dataset.net,nt); return; }
     if(t.closest('#tab-net')){ netOpen(); return; }
     if(t.closest('#tab-art')){ artModal(); return; }
+    if(t.closest('#tab-cred')){ creditsModal(); return; }
     if(t.closest('#tab-snd')){ sndGesture(); sndSet(!SND.on); sfx('select'); return; }
     const ad=t.closest('[data-adv]'); if(ad){ advClick(ad); return; }
     const pb=t.closest('[data-padb]'); if(pb){ if(pb.dataset.padb==='a') advAct(); else advMenu(); return; }
