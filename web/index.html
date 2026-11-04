@@ -2112,7 +2112,7 @@ const rndOf=a=>a[Math.floor(Math.random()*a.length)];
 const addCn=(c,k,n)=>{ c.cn=c.cn||{}; c.cn[k]=Math.max(0,(c.cn[k]||0)+n); };
 const OPP_ONLY=(ab)=>ab;
 function aiNameFor(p,pool){ const cnt={}; for(const c of pool) cnt[c.d.name]=(cnt[c.d.name]||0)+1; const e=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0]; return e?e[0]:'Forest'; }
-async function chooseCardName(p,title,text,aiPool){ if(aiQ(p)||HEADLESS||g.players[p].remote) return aiNameFor(p,aiPool()); return await askCardName(title,text,''); }
+async function chooseCardName(p,title,text,aiPool){ if(aiQ(p)||HEADLESS) return aiNameFor(p,aiPool()); if(g.players[p].remote){ const names=[...new Set(aiPool().map(k=>k.d.name))].slice(0,24); if(!names.length) return aiNameFor(p,aiPool()); return (await askChoice(title,text,names.map(n=>[n,n])))||names[0]; } return await askCardName(title,text,''); }
 const TG_opp={k:'player',pf:(pid,src)=>pid!==ctrl(src),label:'an opponent'};
 const TG_plains={k:'card',f:c=>isLand(c)&&hasLT(c,'Plains'),label:'a Plains'};
 const TG_legend={k:'card',f:c=>isCreature(c)&&/Legendary/.test(c.d.type),label:'a legendary creature'};
@@ -2437,7 +2437,7 @@ D({id:'whimsy',name:'Whimsy',cost:'XUU',type:'Sorcery',ai:'none',text:'Play X ra
 // AI hookup for wave 4 cards
 for(const [id,k,sc] of [['disharmony','disharm'],['avoid_fate','counterAur'],['silhouette','silh'],['reincarnation','reinc'],['backdraft','backdraft'],['juxtapose','juxta'],['call_from_the_grave','callgrave'],['eureka','eureka'],['all_hallows_eve','hallows'],['dust_to_dust','dust'],['false_orders','falseord'],['whimsy','whimsy'],['city_in_a_bottle','cityb'],['golgothian_sylex','sylexc'],
   ['dark_sphere','artifact',5],['nova_pentacle','artifact',8],['ring_of_immortals','artifact',10],['reflecting_mirror','artifact',6],['life_matrix','artifact',12],['wand_of_ith','artifact',10]]){ if(DB[id]){ DB[id].ai=k; if(sc) DB[id].aiScore=sc; } }
-for(const [id,i,k] of [['ring_of_immortals',0,'ringImm'],['dark_sphere',0,'darksphere'],['nova_pentacle',0,'pentacle'],['shimian_night_stalker',0,'shimian'],['rubinia_soulsinger',0,'steal'],['willow_satyr',0,'steal'],['preacher',0,'preacher'],['aswan_jaguar',0,'assassin'],['scarwood_bandits',0,'scarwood'],['life_matrix',0,'matrix'],['wand_of_ith',0,'wand'],['faerie_dragon',0,'faerie'],['reflecting_mirror',0,'mirror'],['golgothian_sylex',0,'sylexa']]) if(DB[id]&&DB[id].abilities&&DB[id].abilities[i]) DB[id].abilities[i].ai=k;
+for(const [id,i,k] of [['ring_of_immortals',0,'ringImm'],['dark_sphere',0,'darksphere'],['nova_pentacle',0,'pentacle'],['shimian_night_stalker',0,'shimian'],['rubinia_soulsinger',0,'steal'],['willow_satyr',0,'steal'],['preacher',0,'preacher'],['aswan_jaguar',0,'assassin'],['scarwood_bandits',0,'scarwood'],['life_matrix',0,'matrix'],['wand_of_ith',0,'wand'],['faerie_dragon',0,'faerie'],['clergy_of_the_holy_nimbus',0,'noregen'],['reflecting_mirror',0,'mirror'],['golgothian_sylex',0,'sylexa']]) if(DB[id]&&DB[id].abilities&&DB[id].abilities[i]) DB[id].abilities[i].ai=k;
 
 function mkCard(id,owner){ return {iid:IID++,id,d:DB[id],owner,own0:owner,controller:owner,zone:'library',tapped:false,sick:false,damage:0,counters:0,temp:{p:0,t:0,kw:[]},attachedTo:null,regen:0,damagedBy:new Set(),attacking:false,blocking:null,blockedBy:[],wasBlocked:false,shield:0,band:null}; }
 function byIid(i){ return g.cards.get(i); }
@@ -3483,6 +3483,7 @@ function aiEvalAbility(p,c,ab,S){
     case 'matrix': { if(!(S.my&&g.step==='upkeep'&&!S.top)) return null; const k=myCr.find(k=>lg(k)&&!(k.cn&&k.cn.matrix)&&val(k)>=5); return k?R(30,[ref(k)]):null; }
     case 'wand': return S.main&&OP.hand.length>=2?R(10,[face]):null;
     case 'faerie': return S.oppEnd?R(5):null;
+    case 'noregen': { const k=c; if(k.noRegenT===g.turn||ctrl(k)===p) return null; const rem=tough(k)-k.damage; const spell=S.top&&S.top.ctrl===p&&stackDamageTo(S.top,k)>=rem&&stackDamageTo(S.top,k)>0; const cmb=S.block&&!S.top&&wouldDieInCombat(k); return (spell||cmb)?R(140):null; }
     case 'mirror': { if(!S.inResp||S.top.kind!=='spell') return null; const t=S.top; if(!legal(ab.target,{kind:'stack',sid:t.sid},c)) return null; if(!(t.card.d.ai==='burn'||t.card.d.ai==='xburn'||(t.card.d.n||0)>=3)) return null; if(!planPay(p,parseCost(String(2*cmcOf(t.card.d))),0,c).ok) return null; return R(160,[{kind:'stack',sid:t.sid}]); }
     case 'sylexa': { if(!S.main) return null; const bad=g.bf.filter(k=>!k.copy&&ATQ_NAMES.has(k.d.name)); const f=q=>bad.filter(k=>ctrl(k)===q).reduce((a,k)=>a+(isCreature(k)?val(k):cmcOf(k.d)),0); return f(O)-f(p)>=8?R(30+f(O)):null; }
     case 'ping': {
