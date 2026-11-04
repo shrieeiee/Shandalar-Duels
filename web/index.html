@@ -45,6 +45,7 @@ select,input[type=text]{background:#0f171e;color:var(--ink);border:1px solid var
 .f-R{--fb:#f1cfbc;--fe:#ab472b;--ft:#2b140c}
 .f-G{--fb:#d1e2c2;--fe:#3c7843;--ft:#13240f}
 .f-A{--fb:#ddd7ce;--fe:#857a6e;--ft:#221e1a}
+.f-M{--fb:#f0e2a8;--fe:#a8863a;--ft:#2a2010}
 .f-L{--fb:#e4d8bc;--fe:#7a6646;--ft:#241c10}
 .card{position:relative;background:var(--fb);color:var(--ft);border:2px solid var(--fe);border-radius:7px;display:flex;flex-direction:column;overflow:hidden;user-select:none;-webkit-user-select:none;box-shadow:0 2px 6px #0008}
 .card .hd{display:flex;align-items:flex-start;gap:3px;padding:3px 4px 2px;background:color-mix(in srgb,var(--fe) 20%,var(--fb));border-bottom:1px solid color-mix(in srgb,var(--fe) 45%,var(--fb))}
@@ -1758,8 +1759,210 @@ function colorsOfD(d){ if(d.colOv) return [d.colOv]; return COLORS.filter(k=>(d.
 const zeroPool=()=>({W:0,U:0,B:0,R:0,G:0,C:0});
 let PAYCARD=null;
 const payCtx=(c,fn)=>{ const o=PAYCARD; PAYCARD=c; try{ return fn(); } finally{ PAYCARD=o; } };
-function costOf(c){ const cost=parseCost(c.d.cost); if(typeof g!=='undefined'&&g&&g.bf&&!isLand(c)&&hasColor(c,'W')) cost.generic+=3*g.bf.filter(k=>k.d.id==='gloom').length; return cost; }
+function costOf(c){ const cost=parseCost(c.d.cost); if(typeof g!=='undefined'&&g&&g.bf&&!isLand(c)){ const n=g.bf.filter(k=>k.d.id==='stone_calendar'&&ctrl(k)===c.owner).length; if(n) cost.generic=Math.max(0,cost.generic-n); } if(typeof g!=='undefined'&&g&&g.bf&&!isLand(c)){ let r=0; if(isCreatureD(c.d)) r+=2*g.bf.filter(k=>k.d.id==='planar_gate'&&ctrl(k)===c.owner).length; if(isInstantD(c.d)||c.d.type==='Enchantment') r+=2*g.bf.filter(k=>k.d.id==='mana_matrix'&&ctrl(k)===c.owner).length; if(r) cost.generic=Math.max(0,cost.generic-r); }
+  if(typeof g!=='undefined'&&g&&g.bf&&!isLand(c)&&hasColor(c,'W')) cost.generic+=3*g.bf.filter(k=>k.d.id==='gloom').length; return cost; }
 function abCost(c,ab){ const k=parseCost(ab.cost); if(/Enchantment/.test(c.d.type)&&hasColor(c,'W')) k.generic+=3*g.bf.filter(m=>m.d.id==='gloom').length; return k; }
+
+// ===== Batch 37: The Dark / misc gaps (ported from the oracle text; behaviour notes inline) =====
+TG.gyCreatureAny={k:'gy',f:c=>isCreature(c),label:'a creature card in a graveyard'};
+TG.gyArtifactAny={k:'gy',f:c=>isArtifact(c),label:'an artifact card in a graveyard'};
+TG.gyEnchOwn={k:'gy',f:(c,src)=>isEnch(c)&&c.owner===src.owner,label:'an enchantment card in your graveyard'};
+TG.myForest={k:'card',f:(c,s)=>isLand(c)&&hasLT(c,'Forest')&&ctrl(c)===ctrl(s),label:'a Forest you control'};
+TG.attacker={k:'card',f:c=>isCreature(c)&&!!c.attacking,label:'an attacking creature'};
+TG.goblin={k:'card',f:c=>isCreature(c)&&/Goblin/.test(c.d.sub||''),label:'a Goblin'};
+TG.otherOrcGob={k:'card',f:(c,s)=>isCreature(c)&&c!==s&&ctrl(c)===ctrl(s)&&/Orc|Goblin/.test(c.d.sub||''),label:'another Orc or Goblin you control'};
+TG.attackedPlayer={k:'player',pf:pid=>g.players[pid].atkTurn===g.turn,label:'a player who attacked this turn'};
+const payLife=async(p,n,title,msg)=>{ const P=g.players[p]; if(P.life<n) return false; let yes=true; if(!aiQ(p)&&!HEADLESS) yes=(await askChoice(title,msg,[['y','Pay '+n+' life'],['n','Decline']]))==='y'; else yes=P.life>n+4; if(yes){ P.life-=n; log(`${P.name} pays ${n} life.`); } return yes; };
+
+Cr('eater_of_the_dead','Eater of the Dead','4B','Horror',3,4,[],'{0}: If Eater of the Dead is tapped, exile target creature card from a graveyard and untap Eater of the Dead.',
+  {abilities:[{cost:'',cond:c=>c.tapped,target:TG.gyCreatureAny,ai:'none',resolve:x=>{ const t=byIid(x.targets[0].iid); if(!t||t.zone!=='graveyard') return; moveTo(t,'exile'); log(`${t.d.name} is removed from the game.`); if(selfOk(x)) x.src.tapped=false; }}]});
+Cr('electric_eel','Electric Eel','U','Fish',1,1,[],'When Electric Eel enters the battlefield, it deals 1 damage to you. {R}{R}: Electric Eel gets +2/+0 until end of turn and deals 1 damage to you.',
+  {etb:x=>dealDamage(x.src,{kind:'player',pid:x.ctrl},1),abilities:[{cost:'RR',ai:'pump',p:2,t:0,resolve:x=>{ if(selfOk(x)){ x.src.temp.p+=2; dealDamage(x.src,{kind:'player',pid:x.ctrl},1); } }}]});
+D({id:'fasting',name:'Fasting',cost:'W',type:'Enchantment',ai:'none',text:'At the beginning of your upkeep, put a hunger counter on Fasting; then destroy it if it has five or more. You may skip your draw step; if you do, gain 2 life. When you draw a card, destroy Fasting.',
+  upkeep:x=>{ if(ctrl(x.src)!==x.pid) return; x.src.hunger=(x.src.hunger||0)+1; log(`Fasting has ${x.src.hunger} hunger counter${x.src.hunger>1?'s':''}.`); if(x.src.hunger>=5) destroy(x.src); }});
+D({id:'festival',name:'Festival',cost:'W',type:'Instant',ai:'none',castCond:p=>g.active!==p&&g.step==='upkeep',text:"Cast this spell only during an opponent's upkeep. Creatures can't attack this turn.",
+  resolve:x=>{ g.noAtkTurn=g.turn; log("Creatures can't attack this turn (Festival)."); }});
+D({id:'fire_and_brimstone',name:'Fire and Brimstone',cost:'3WW',type:'Instant',target:TG.attackedPlayer,ai:'none',text:'Fire and Brimstone deals 4 damage to target player who attacked this turn and 4 damage to you.',
+  resolve:x=>{ const t=x.targets[0]; dealDamage(x.src,{kind:'player',pid:t.pid},4); dealDamage(x.src,{kind:'player',pid:x.ctrl},4); }});
+Cr('giant_shark','Giant Shark','5U','Shark',4,4,[],"Giant Shark can't attack unless defending player controls an Island. When you control no Islands, sacrifice Giant Shark.",
+  {needLand:'Island',upkeep:x=>{ if(ctrl(x.src)===x.pid&&!g.bf.some(l=>isLand(l)&&ctrl(l)===x.pid&&hasLT(l,'Island'))) sacrifice(x.src); }});
+Cr('goblin_wizard','Goblin Wizard','2RR','Goblin Wizard',1,1,[],'{T}: You may put a Goblin permanent card from your hand onto the battlefield. {R}: Target Goblin gains protection from white until end of turn.',
+  {abilities:[{cost:'',tap:true,ai:'none',cond:c=>g.players[ctrl(c)].hand.some(h=>/Goblin/.test(h.d.sub||'')&&!isInstantD(h.d)),resolve:async x=>{
+      const P=g.players[x.ctrl], gs=P.hand.filter(h=>/Goblin/.test(h.d.sub||'')&&/Creature|Artifact|Enchantment|Land/.test(h.d.type)); if(!gs.length) return;
+      let pick=gs.sort((a,b)=>cmcOf(b.d)-cmcOf(a.d))[0];
+      if(!aiQ(x.ctrl)&&!HEADLESS){ const r=await askChoice('Goblin Wizard','Put a Goblin onto the battlefield?',[...gs.map(h=>[String(h.iid),h.d.name]),['n','None']]); pick=gs.find(h=>String(h.iid)===r); }
+      if(!pick) return; moveTo(pick,'bf'); pick.controller=x.ctrl; pick.sick=true; log(`${pick.d.name} is put onto the battlefield (Goblin Wizard).`); if(pick.d.etb) pick.d.etb({src:pick,ctrl:x.ctrl}); }},
+   {cost:'R',target:TG.goblin,ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)) t.temp.kw.push('proW'); }}]});
+Cr('grave_robbers','Grave Robbers','1BB','Human Rogue',1,1,[],'{B}, {T}: Exile target artifact card from a graveyard. You gain 2 life.',
+  {abilities:[{cost:'B',tap:true,target:TG.gyArtifactAny,ai:'none',resolve:x=>{ const t=byIid(x.targets[0].iid); if(!t||t.zone!=='graveyard') return; moveTo(t,'exile'); gainLife(x.ctrl,2); }}]});
+D({id:'living_armor',name:'Living Armor',cost:'4',type:'Artifact',ai:'none',text:"{T}, Sacrifice Living Armor: Put X +0/+1 counters on target creature, where X is that creature's mana value.",
+  abilities:[{cost:'',tap:true,sacSelf:true,target:TG.creature,ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.tcnt=(t.tcnt||0)+cmcOf(t.d); log(`${t.d.name} gets ${cmcOf(t.d)} +0/+1 counters.`); } }}]});
+Cr('marsh_goblins','Marsh Goblins','BR','Goblin',1,1,['swampwalk'],'Swampwalk.');
+D({id:'necropolis',name:'Necropolis',cost:'5',type:'Artifact Creature',sub:'Wall',p:0,t:1,kw:['defender'],ai:'creature',text:"Defender. Exile a creature card from your graveyard: Put X +0/+1 counters on Necropolis, where X is the exiled card's mana value.",
+  abilities:[{cost:'',target:TG.gyCreature,ai:'none',resolve:x=>{ const t=byIid(x.targets[0].iid); if(!t||t.zone!=='graveyard'||!selfOk(x)) return; moveTo(t,'exile'); x.src.tcnt=(x.src.tcnt||0)+cmcOf(t.d); log(`Necropolis gets ${cmcOf(t.d)} +0/+1 counters.`); }}]});
+Cr('niall_silvain','Niall Silvain','GGG','Ouphe',2,2,[],'{G}{G}{G}{G}, {T}: Regenerate target creature.',
+  {abilities:[{cost:'GGGG',tap:true,target:TG.creature,ai:'regen',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.regen++; log(`${t.d.name} gains a regeneration shield.`); } }}]});
+Cr('orc_general','Orc General','2R','Orc Warrior',2,2,[],'{T}, Sacrifice another Orc or Goblin: Other Orc creatures get +1/+1 until end of turn.',
+  {abilities:[sacAb('',true,TG.otherOrcGob,x=>{ for(const k of g.bf) if(isCreature(k)&&k!==x.src&&/Orc/.test(k.d.sub||'')){ k.temp.p++; k.temp.t++; } },{ai:'none'})]});
+Cr('scarwood_goblins','Scarwood Goblins','RG','Goblin',2,2,[],'');
+Cr('scarwood_hag','Scarwood Hag','1G','Hag',1,1,[],'{G}{G}{G}{G}, {T}: Target creature gains forestwalk until end of turn. {T}: Target creature loses forestwalk until end of turn.',
+  {abilities:[{cost:'GGGG',tap:true,target:TG.creature,ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ if(t.temp.lose) t.temp.lose=t.temp.lose.filter(k=>k!=='forestwalk'); t.temp.kw.push('forestwalk'); } }},
+   {cost:'',tap:true,target:TG.creature,ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.temp.kw=t.temp.kw.filter(k=>k!=='forestwalk'); t.temp.lose=(t.temp.lose||[]).concat('forestwalk'); } }}]});
+D({id:'season_of_the_witch',name:'Season of the Witch',cost:'BBB',type:'Enchantment',ai:'none',text:"At the beginning of your upkeep, sacrifice Season of the Witch unless you pay 2 life. At the beginning of the end step, destroy all untapped creatures that didn't attack this turn, except creatures that couldn't attack.",
+  upkeep:async x=>{ if(ctrl(x.src)!==x.pid) return; if(!(await payLife(x.pid,2,'Season of the Witch','Pay 2 life to keep Season of the Witch?'))){ log('Season of the Witch is sacrificed.'); sacrifice(x.src); } },
+  endStep:(c,ap)=>{ if(c.seasonT===g.turn) return; c.seasonT=g.turn; for(const k of [...g.bf]) if(isCreature(k)&&ctrl(k)===ap&&!k.tapped&&k.attackedTurn!==g.turn&&canAttack(k,ap)){ log(`${k.d.name} did not attack and is destroyed (Season of the Witch).`); destroy(k); } }});
+D({id:'skull_of_orm',name:'Skull of Orm',cost:'3',type:'Artifact',ai:'none',text:'{5}, {T}: Return target enchantment card from your graveyard to your hand.',
+  abilities:[{cost:'5',tap:true,target:TG.gyEnchOwn,ai:'none',resolve:x=>{ const t=byIid(x.targets[0].iid); if(!t||t.zone!=='graveyard') return; moveTo(t,'hand'); log(`${t.d.name} returns to ${playerName(x.ctrl)}'s hand.`); }}]});
+D({id:'stone_calendar',name:'Stone Calendar',cost:'5',type:'Artifact',ai:'none',text:'Spells you cast cost {1} less to cast.'});
+Cr('the_fallen','The Fallen','1BBB','Zombie',2,3,[],'At the beginning of your upkeep, The Fallen deals 1 damage to each opponent it has dealt damage to this game.',
+  {onHit:(c,pid)=>{ c.fallenHit=c.fallenHit||{}; c.fallenHit[pid]=1; },upkeep:x=>{ if(ctrl(x.src)!==x.pid) return; const h=x.src.fallenHit||{}; for(const k of Object.keys(h)){ if(+k!==x.pid) dealDamage(x.src,{kind:'player',pid:+k},1); } }});
+D({id:'tivadars_crusade',name:"Tivadar's Crusade",cost:'1WW',type:'Sorcery',ai:'none',text:'Destroy all Goblins.',
+  resolve:x=>{ for(const c of g.bf.filter(k=>isCreature(k)&&/Goblin/.test(k.d.sub||''))) destroy(c); }});
+D({id:'tormods_crypt',name:"Tormod's Crypt",cost:'0',type:'Artifact',ai:'none',text:"{T}, Sacrifice Tormod's Crypt: Exile target player's graveyard.",
+  abilities:[{cost:'',tap:true,sacSelf:true,target:TG.player,ai:'none',resolve:x=>{ const P=g.players[x.targets[0].pid]; for(const c of [...P.graveyard]) moveTo(c,'exile'); log(`${P.name}'s graveyard is removed from the game.`); }}]});
+D({id:'tower_of_coireall',name:'Tower of Coireall',cost:'2',type:'Artifact',ai:'none',text:"{T}: Target creature can't be blocked by Walls this turn.",
+  abilities:[{cost:'',tap:true,target:TG.creature,ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)) t.temp.noWall=true; }}]});
+D({id:'dark_heart_of_the_wood',name:'Dark Heart of the Wood',cost:'BG',type:'Enchantment',ai:'none',text:'Sacrifice a Forest: You gain 3 life.',
+  abilities:[sacAb('',false,TG.myForest,x=>gainLife(x.ctrl,3),{ai:'none'})]});
+D({id:'maze_of_ith',name:'Maze of Ith',cost:'',type:'Land',produce:'',ai:'none',text:'{T}: Untap target attacking creature. Prevent all combat damage that would be dealt to and dealt by that creature this turn.',
+  abilities:[{cost:'',tap:true,target:TG.attacker,ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.tapped=false; t.temp.noCombat=true; log(`${t.d.name} is untapped; combat damage to and from it is prevented.`); } }}]});
+D({id:'scarecrow',name:'Scarecrow',cost:'5',type:'Artifact Creature',sub:'Scarecrow',p:2,t:2,ai:'creature',text:'{6}, {T}: Prevent all damage that would be dealt to you this turn by creatures with flying.',
+  abilities:[{cost:'6',tap:true,ai:'none',resolve:x=>{ g.players[x.ctrl].noFlyDmg=g.turn; log(`Damage to ${playerName(x.ctrl)} from flying creatures is prevented this turn.`); }}]});
+D({id:'cleansing',name:'Cleansing',cost:'WWW',type:'Sorcery',ai:'none',text:'For each land, destroy that land unless any player pays 1 life.',
+  resolve:async x=>{ for(const P of g.players){ const ls=g.bf.filter(l=>isLand(l)&&ctrl(l)===P.id); if(!ls.length) continue; const maxPay=Math.max(0,Math.min(ls.length,P.life-1)); let pay=0;
+      if(aiQ(P.id)||HEADLESS) pay=Math.min(maxPay,Math.max(0,P.life-9));
+      else if(maxPay>0){ const opts=[]; for(let i=0;i<=Math.min(maxPay,10);i++) opts.push([String(i),i===0?'Keep none':`Pay ${i} life to keep ${i} land${i>1?'s':''}`]); pay=+(await askChoice('Cleansing',`You control ${ls.length} lands. Pay 1 life for each land you want to keep.`,opts)); }
+      P.life-=pay; if(pay) log(`${P.name} pays ${pay} life to save ${pay} land${pay>1?'s':''}.`);
+      const doomed=[...ls].sort((a,b)=>(b.tapped?1:0)-(a.tapped?1:0)).slice(0,ls.length-pay); for(const l of doomed) destroy(l); } }});
+Cr('nameless_race','Nameless Race','3B','',0,0,['trample'],"Trample. As Nameless Race enters the battlefield, pay any amount of life, up to the number of white nontoken permanents your opponents control plus white cards in their graveyards. Its power and toughness each equal the life paid.",
+  {dyn:c=>c.paid||0,etb:async x=>{ const o=1-x.ctrl, P=g.players[x.ctrl]; const cap=g.bf.filter(k=>ctrl(k)===o&&!k.token&&hasColor(k,'W')).length+g.players[o].graveyard.filter(k=>hasColor(k,'W')).length; const mx=Math.max(0,Math.min(cap,P.life-1)); let n=mx;
+      if(!aiQ(x.ctrl)&&!HEADLESS&&mx>0){ const opts=[]; for(let i=0;i<=Math.min(mx,12);i++) opts.push([String(i),`Pay ${i} life`]); n=+(await askChoice('Nameless Race','How much life do you pay?',opts)); }
+      else n=Math.min(mx,Math.max(0,P.life-8)); x.src.paid=n; P.life-=n; log(`${P.name} pays ${n} life; Nameless Race enters as a ${n}/${n}.`); }});
+
+// ===== Batch 39a: Legends — legendary creatures, rampage, Elder Dragons =====
+const LC=(id,name,cost,sub,p,t,kw,text,more)=>D(Object.assign({id,name,cost,type:'Legendary Creature',sub,p,t,kw:kw||[],text:text||'',ai:'creature'},more||{}));
+const fmtC=c=>c.replace(/[WUBRGC]/g,m=>`{${m}}`).replace(/\d+/g,m=>`{${m}}`);
+const upkPay=cost=>async x=>{ if(ctrl(x.src)!==x.pid||!onBf(x.src)) return; if(!(await upkeepMay(x,cost,`Pay ${fmtC(cost)} to keep ${x.src.d.name}?`,'Sacrifice it'))){ log(`${x.src.d.name}'s upkeep isn't paid.`); sacrifice(x.src); } };
+TG.atkOrBlk={k:'card',f:c=>isCreature(c)&&(c.attacking||!!c.blocking),label:'an attacking or blocking creature'};
+TG.myGyCreature={k:'gy',f:(c,src)=>isCreature(c)&&c.owner===src.owner,label:'a creature card in your graveyard'};
+const noCombatAb=(cost,extra)=>Object.assign({cost,tap:true,target:TG.creature,ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.temp.noCombat=true; log(`Combat damage dealt by ${t.d.name} is prevented this turn.`); } }},extra||{});
+// vanilla and near-vanilla legends
+LC('barktooth_warbeard','Barktooth Warbeard','4BRR','Human Warrior',6,5);
+LC('jasmine_boreal','Jasmine Boreal','3GW','Human',4,5);
+LC('jedit_ojanen','Jedit Ojanen','4WWU','Cat Warrior',5,5);
+LC('jerrard_of_the_closed_fist','Jerrard of the Closed Fist','3RGG','Human Knight',6,5);
+LC('kasimir_the_lone_wolf','Kasimir the Lone Wolf','4WU','Human Warrior',5,3);
+LC('lady_orca','Lady Orca','5BR','Demon',7,4);
+LC('sir_shandlar_of_eberyn','Sir Shandlar of Eberyn','4GW','Human Knight',4,7);
+LC('sivitri_scarzam','Sivitri Scarzam','5UB','Human',6,4);
+LC('the_lady_of_the_mountain','The Lady of the Mountain','4RG','Giant',5,5);
+LC('tobias_andrion','Tobias Andrion','3WU','Human Advisor',4,4);
+LC('torsten_von_ursus','Torsten Von Ursus','3GGW','Human Soldier',5,5);
+LC('ramirez_depietro','Ramirez DePietro','3UBB','Human Pirate',4,3,['firstStrike'],'First strike.');
+LC('gosta_dirk','Gosta Dirk','3WWUU','Human Warrior',4,4,['firstStrike'],'First strike. Creatures with islandwalk can be blocked as though they didn\'t have islandwalk.',{unwalk:['Island']});
+LC('lord_magnus','Lord Magnus','3GWW','Human Druid',4,3,['firstStrike'],'First strike. Creatures with plainswalk or forestwalk can be blocked as though they didn\'t have it.',{unwalk:['Plains','Forest']});
+LC('ur_drago','Ur-Drago','3UUBB','Elemental',4,4,['firstStrike'],'First strike. Creatures with swampwalk can be blocked as though they didn\'t have swampwalk.',{unwalk:['Swamp']});
+LC('livonya_silone','Livonya Silone','2RRGG','Human Warrior',4,4,['firstStrike','legendwalk'],'First strike. Legendary landwalk (can\'t be blocked while defending player controls a legendary land).');
+LC('bartel_runeaxe','Bartel Runeaxe','3BRG','Giant Warrior',6,5,['vigilance'],'Vigilance. (Its "can\'t be the target of Aura spells" clause is not implemented.)');
+LC('ayesha_tanaka','Ayesha Tanaka','WWUU','Human Artificer',2,2,['banding'],'Banding. (Its artifact-ability counter clause is not implemented.)');
+LC('jacques_le_vert','Jacques le Vert','1RGW','Human Warrior',3,2,[],'Green creatures you control get +0/+2.',{anthem:{color:'G',p:0,t:2,mine:true}});
+LC('sol_kanar_the_swamp_king','Sol\'kanar the Swamp King','2UBR','Demon',5,5,['swampwalk'],'Swampwalk. Whenever a player casts a black spell, you gain 1 life.',{onCast:(sp,p,k)=>hasColor(sp,'B')?(async x=>{ gainLife(ctrl(k),1); }):null});
+// mana legends
+LC('princess_lucrezia','Princess Lucrezia','3UUB','Human Wizard',5,4,[],'{T}: Add {U}.',{abilities:[{tap:true,mana:'U'}]});
+LC('riven_turnbull','Riven Turnbull','5UB','Human Advisor',5,7,[],'{T}: Add {B}.',{abilities:[{tap:true,mana:'B'}]});
+LC('sunastian_falconer','Sunastian Falconer','3RG','Human Shaman',4,4,[],'{T}: Add {C}{C}.',{abilities:[{tap:true,mana:'CC'}]});
+// rampage
+const RAMP=(id,name,cost,sub,p,t,n,extraKw,leg)=>{ const f=leg?LC:Cr; return f(id,name,cost,sub,p,t,['rampage'+n].concat(extraKw||[]),(extraKw&&extraKw.includes('trample')?'Trample. ':'')+`Rampage ${n} (Whenever this creature becomes blocked, it gets +${n}/+${n} until end of turn for each creature blocking it beyond the first.)`); };
+RAMP('aerathi_berserker','Aerathi Berserker','2RRR','Human Berserker',2,4,3);
+RAMP('craw_giant','Craw Giant','3GGGG','Giant',6,4,2,['trample']);
+RAMP('frost_giant','Frost Giant','3RRR','Giant',4,4,2);
+RAMP('wolverine_pack','Wolverine Pack','2GG','Wolverine',2,4,2);
+RAMP('hunding_gjornersen','Hunding Gjornersen','3WUU','Human Warrior',5,4,1,[],true);
+RAMP('marhault_elsdragon','Marhault Elsdragon','3RRG','Elf Warrior',4,6,1,[],true);
+// Elder Dragons
+LC('chromium','Chromium','2WWUUBB','Elder Dragon',7,7,['flying','rampage2'],'Flying. Rampage 2. At the beginning of your upkeep, sacrifice Chromium unless you pay {W}{U}{B}.',{upkeep:upkPay('WUB')});
+LC('nicol_bolas','Nicol Bolas','2UUBBRR','Elder Dragon',7,7,['flying'],'Flying. At the beginning of your upkeep, sacrifice Nicol Bolas unless you pay {U}{B}{R}. Whenever Nicol Bolas deals damage to an opponent, that player discards their hand.',{upkeep:upkPay('UBR'),onHit:(s,pid)=>{ const P=g.players[pid]; for(const c of [...P.hand]) moveTo(c,'graveyard'); log(`${P.name} discards their hand.`); }});
+LC('palladia_mors','Palladia-Mors','2RRGGWW','Elder Dragon',7,7,['flying','trample'],'Flying, trample. At the beginning of your upkeep, sacrifice Palladia-Mors unless you pay {R}{G}{W}.',{upkeep:upkPay('RGW')});
+LC('vaevictis_asmadi','Vaevictis Asmadi','2BBRRGG','Elder Dragon',7,7,['flying'],'Flying. At the beginning of your upkeep, sacrifice Vaevictis Asmadi unless you pay {B}{R}{G}. {B}, {R}, {G}: +1/+0 until end of turn (each).',{upkeep:upkPay('BRG'),abilities:[pumpAb('B',1,0),pumpAb('R',1,0),pumpAb('G',1,0)]});
+LC('arcades_sabboth','Arcades Sabboth','2GGWWUU','Elder Dragon',7,7,['flying'],'Flying. At the beginning of your upkeep, sacrifice Arcades Sabboth unless you pay {G}{W}{U}. Each untapped creature you control gets +0/+2. {W}: +0/+1 until end of turn.',{upkeep:upkPay('GWU'),untapT:2,abilities:[pumpAb('W',0,1)]});
+// activated legends
+LC('pavel_maliki','Pavel Maliki','4BR','Human',5,3,[],'{B}{R}: +1/+0 until end of turn.',{abilities:[pumpAb('BR',1,0)]});
+LC('xira_arien','Xira Arien','BRG','Insect Wizard',1,2,['flying'],'Flying. {B}{R}{G}, {T}: Target player draws a card.',{abilities:[gainAb('BRG',TG.player,(x,t)=>{ drawCards(t.pid,1); },{ai:'none'})]});
+LC('tuknir_deathlock','Tuknir Deathlock','RRGG','Human Wizard',2,2,['flying'],'Flying. {R}{G}, {T}: Target creature gets +2/+2 until end of turn.',{abilities:[{cost:'RG',tap:true,target:TG.creature,ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.temp.p+=2; t.temp.t+=2; } }}]});
+LC('gwendlyn_di_corci','Gwendlyn Di Corci','UBBR','Human Rogue',3,5,[],'{T}: Target player discards a card at random. Activate only during your turn.',{abilities:[gainAb('',TG.player,(x,t)=>{ const P=g.players[t.pid]; if(!P.hand.length) return; const c=P.hand[Math.floor(Math.random()*P.hand.length)]; moveTo(c,'graveyard'); log(`${P.name} discards ${c.d.name} at random.`,P.id); },{myTurn:true,ai:'none'})]});
+LC('lady_evangela','Lady Evangela','WUB','Human Cleric',1,2,[],'{W}{B}, {T}: Prevent all combat damage that would be dealt by target creature this turn.',{abilities:[noCombatAb('WB')]});
+LC('ragnar','Ragnar','GWU','Human Cleric',2,2,[],'{G}{W}{U}, {T}: Regenerate target creature.',{abilities:[{cost:'GWU',tap:true,target:TG.creature,ai:'regen',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.regen++; log(`${t.d.name} gains a regeneration shield.`); } }}]});
+LC('kei_takahashi','Kei Takahashi','2GW','Human Cleric',2,2,[],'{T}: Prevent the next 2 damage that would be dealt to target creature this turn.',{abilities:[{cost:'',tap:true,target:TG.creature,ai:'none',resolve:x=>{ if(onBf(tObj(x.targets[0]))) addShield(x.targets[0],2); }}]});
+LC('lady_caleria','Lady Caleria','3GGWW','Elf Archer',3,6,[],'{T}: Lady Caleria deals 3 damage to target attacking or blocking creature.',{abilities:[{cost:'',tap:true,target:TG.atkOrBlk,ai:'ping',n:3,resolve:x=>damageRef(x.src,x.targets[0],3)}]});
+LC('tor_wauki','Tor Wauki','2BBR','Human Archer',3,3,[],'{T}: Tor Wauki deals 2 damage to target attacking or blocking creature.',{abilities:[{cost:'',tap:true,target:TG.atkOrBlk,ai:'ping',n:2,resolve:x=>damageRef(x.src,x.targets[0],2)}]});
+LC('adun_oakenshield','Adun Oakenshield','BRG','Human Knight',1,2,[],'{B}{R}{G}, {T}: Return target creature card from your graveyard to your hand.',{abilities:[{cost:'BRG',tap:true,target:TG.myGyCreature,ai:'none',resolve:x=>{ const t=byIid(x.targets[0].iid); if(!t||t.zone!=='graveyard') return; moveTo(t,'hand'); log(`${t.d.name} returns to ${playerName(x.ctrl)}'s hand.`); }}]});
+LC('angus_mackenzie','Angus Mackenzie','GWU','Human Cleric',2,2,[],'{G}{W}{U}, {T}: Prevent all combat damage that would be dealt this turn. Activate only before the combat damage step.',{abilities:[{cost:'GWU',tap:true,ai:'fog',resolve:x=>{ g.fog=true; log('All combat damage will be prevented this turn.'); }}]});
+LC('tetsuo_umezawa','Tetsuo Umezawa','UBR','Human Archer',3,3,[],'{U}{B}{B}{R}, {T}: Destroy target tapped or blocking creature. (Its "can\'t be the target of Aura spells" clause is not implemented.)',{abilities:[{cost:'UBBR',tap:true,target:{k:'card',f:c=>isCreature(c)&&(c.tapped||!!c.blocking),label:'a tapped or blocking creature'},ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)) destroy(t); }}]});
+LC('ramses_overdark','Ramses Overdark','2UUBB','Human Assassin',4,3,[],'{T}: Destroy target enchanted creature.',{abilities:[{cost:'',tap:true,target:{k:'card',f:c=>isCreature(c)&&auras(c).length>0,label:'an enchanted creature'},ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)) destroy(t); }}]});
+D({id:'minor_demon_token',name:'Minor Demon',cost:'BR',type:'Creature',sub:'Demon',p:1,t:1,token:true,ai:'creature',text:'Token.'});
+LC('boris_devilboon','Boris Devilboon','3BR','Zombie Wizard',2,2,[],'{2}{B}{R}, {T}: Create a 1/1 black and red Demon creature token named Minor Demon.',{abilities:[{cost:'2BR',tap:true,ai:'none',resolve:x=>{ if(onBf(x.src)) makeToken(x.ctrl,'minor_demon_token'); }}]});
+LC('rohgahh_of_kher_keep','Rohgahh of Kher Keep','2BBRR','Kobold',5,5,[],'At the beginning of your upkeep, you may pay {R}{R}{R}. If you don\'t, tap Rohgahh and all Kobolds of Kher Keep, then an opponent gains control of them.',{upkeep:async x=>{ if(ctrl(x.src)!==x.pid||!onBf(x.src)) return; if(await upkeepMay(x,'RRR','Pay {R}{R}{R} to keep Rohgahh?','Give them away')) return; const mine=g.bf.filter(k=>(k===x.src||k.d.id==='kobolds_of_kher_keep')&&ctrl(k)===x.pid); for(const k of mine){ k.tapped=true; k.controller=1-x.pid; } log(`${playerName(1-x.pid)} gains control of Rohgahh and the Kobolds of Kher Keep.`); }});
+// non-legendary creatures
+Cr('akron_legionnaire','Akron Legionnaire','6WW','Giant Soldier',8,4,[],'Except for creatures named Akron Legionnaire and artifact creatures, creatures you control can\'t attack.');
+Cr('evil_eye_of_orms_by_gore','Evil Eye of Orms-by-Gore','4B','Eye',3,6,[],'Non-Eye creatures you control can\'t attack. Can\'t be blocked except by Walls.');
+Cr('wall_of_vapor','Wall of Vapor','3U','Wall',0,1,['defender'],'Defender. Prevent all damage that would be dealt to Wall of Vapor by creatures it\'s blocking.',{wallPrev:true});
+Cr('wall_of_shadows','Wall of Shadows','1BB','Wall',0,1,['defender'],'Defender. Prevent all damage that would be dealt to it by creatures it\'s blocking. (Its "can\'t be the target of spells" clause is not implemented.)',{wallPrev:true});
+Cr('wall_of_putrid_flesh','Wall of Putrid Flesh','2B','Wall',2,4,['defender','proW'],'Defender. Protection from white. Prevent all damage that would be dealt to it by enchanted creatures.',{encPrev:true});
+Cr('enchanted_being','Enchanted Being','1WW','Human',2,2,[],'Prevent all combat damage that would be dealt to Enchanted Being by enchanted creatures.',{encPrev:true});
+Cr('firestorm_phoenix','Firestorm Phoenix','4RR','Phoenix',3,2,['flying'],'Flying. If Firestorm Phoenix would die, return it to its owner\'s hand instead. (The "revealed hand / can\'t cast" drawback is not implemented.)',{bounceOnDie:true});
+
+// ===== Batch 39b: Legends spells, world enchantments, walk-negators, artifacts, lands =====
+TG.oppPlayer={k:'player',pf:(pid,src)=>pid!==ctrl(src),label:'an opponent'};
+TG.instantSpell={k:'spell',f:s=>isInstantD(s.card.d),label:'an instant spell'};
+TG.attackerC={k:'card',f:c=>isCreature(c)&&c.attacking,label:'an attacking creature'};
+const bounceTo=(t)=>{ if(t&&onBf(t)){ if(t.copy) { t.zone='gone'; removeFrom(t); } else moveTo(t,'hand'); log(`${t.d.name} returns to its owner's hand.`); } };
+D({id:'active_volcano',name:'Active Volcano',cost:'R',type:'Instant',target:{k:'card',f:c=>(!isLand(c)&&hasColor(c,'U'))||(isLand(c)&&hasLT(c,'Island')),label:'a blue permanent or an Island'},ai:'none',text:'Choose one — destroy target blue permanent; or return target Island to its owner\'s hand.',resolve:x=>{ const t=tObj(x.targets[0]); if(!t||!onBf(t)) return; if(isLand(t)&&hasLT(t,'Island')) bounceTo(t); else destroy(t); }});
+D({id:'flash_flood',name:'Flash Flood',cost:'U',type:'Instant',target:{k:'card',f:c=>(!isLand(c)&&hasColor(c,'R'))||(isLand(c)&&hasLT(c,'Mountain')),label:'a red permanent or a Mountain'},ai:'none',text:'Choose one — destroy target red permanent; or return target Mountain to its owner\'s hand.',resolve:x=>{ const t=tObj(x.targets[0]); if(!t||!onBf(t)) return; if(isLand(t)&&hasLT(t,'Mountain')) bounceTo(t); else destroy(t); }});
+D({id:'chain_lightning',name:'Chain Lightning',cost:'R',type:'Sorcery',target:TG.any,ai:'burn',n:3,text:'Chain Lightning deals 3 damage to any target. (The "pay {R}{R} to copy it" clause is not implemented.)',resolve:x=>damageRef(x.src,x.targets[0],3)});
+D({id:'flash_counter',name:'Flash Counter',cost:'1U',type:'Interrupt',target:TG.instantSpell,ai:'counter',text:'Counter target instant spell.',resolve:counterRes});
+D({id:'mana_drain',name:'Mana Drain',cost:'UU',type:'Interrupt',target:TG.spell,ai:'counter',text:'Counter target spell. At the beginning of your next main phase, add {C} equal to that spell\'s mana value.',resolve:x=>{ const s=g.stack.find(s=>s.sid===x.targets[0].sid); const n=s?cmcOf(s.card.d):0; counterRes(x); const P=g.players[x.ctrl]; P.drain=(P.drain||0)+n; if(n) log(`${P.name} will add ${n} colorless mana at the start of their next main phase.`,x.ctrl); }});
+for(const [id,nm,col,c1] of [['dwarven_song',"Dwarven Song",'R','R'],['heavens_gate',"Heaven's Gate",'W','W'],['sea_kings_blessing',"Sea Kings' Blessing",'U','U'],['sylvan_paradise','Sylvan Paradise','G','G'],['touch_of_darkness','Touch of Darkness','B','B']])
+  D({id,name:nm,cost:c1,type:'Instant',target:TG.creature,ai:'none',text:`Target creature becomes ${CNAME[col].toLowerCase()} until end of turn. (The printed card allows more than one target.)`,resolve:x=>{ const o=tObj(x.targets[0]); if(o&&onBf(o)){ o.colOv=col; log(`${o.d.name} becomes ${CNAME[col].toLowerCase()}.`); } }});
+D({id:'indestructible_aura',name:'Indestructible Aura',cost:'W',type:'Instant',target:TG.creature,ai:'none',text:'Prevent all damage that would be dealt to target creature this turn.',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.noDmgIn=g.turn; log(`All damage to ${t.d.name} is prevented this turn.`); } }});
+D({id:'subdue',name:'Subdue',cost:'G',type:'Instant',target:TG.creature,ai:'none',text:'Prevent all combat damage that would be dealt by target creature this turn. That creature gets +0/+X until end of turn, where X is its mana value.',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.temp.noCombat=true; t.temp.t+=cmcOf(t.d); } }});
+D({id:'feint',name:'Feint',cost:'R',type:'Instant',target:TG.attackerC,ai:'none',text:'Tap all creatures blocking target attacking creature. Prevent all combat damage that would be dealt this turn by that creature and each creature blocking it.',resolve:x=>{ const a=tObj(x.targets[0]); if(!a||!onBf(a)) return; a.temp.noCombat=true; for(const i of a.blockedBy){ const b=byIid(i); if(b&&onBf(b)){ b.tapped=true; b.temp.noCombat=true; } } log(`${a.d.name} and its blockers deal no combat damage this turn.`); }});
+D({id:'telekinesis',name:'Telekinesis',cost:'UU',type:'Instant',target:TG.creature,ai:'none',text:'Tap target creature. Prevent all combat damage that would be dealt by that creature this turn. It doesn\'t untap during its controller\'s next two untap steps.',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.tapped=true; t.temp.noCombat=true; t.skipUntap=2; } }});
+D({id:'teleport',name:'Teleport',cost:'UUU',type:'Interrupt',target:TG.attackerC,ai:'none',text:'Cast this spell only during the declare attackers step. Target creature can\'t be blocked this turn.',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)) t.temp.kw.push('unblockable'); }});
+D({id:'rapid_fire',name:'Rapid Fire',cost:'3W',type:'Instant',target:TG.creature,ai:'none',text:'Target creature gains first strike until end of turn. If it doesn\'t have rampage, it gains rampage 2 until end of turn.',resolve:x=>{ const t=tObj(x.targets[0]); if(!t||!onBf(t)) return; t.temp.kw.push('firstStrike'); if(![1,2,3].some(n=>hasKw(t,'rampage'+n))) t.temp.kw.push('rampage2'); }});
+D({id:'transmutation',name:'Transmutation',cost:'1B',type:'Instant',target:TG.creature,ai:'none',text:'Switch target creature\'s power and toughness until end of turn.',resolve:x=>{ const t=tObj(x.targets[0]); if(!t||!onBf(t)) return; const p=pow(t), th=tough(t); t.temp.p+=th-p; t.temp.t+=p-th; }});
+D({id:'hellfire',name:'Hellfire',cost:'2BBB',type:'Sorcery',ai:'wrath',text:'Destroy all nonblack creatures. Hellfire deals X plus 3 damage to you, where X is the number of creatures that died this way.',resolve:x=>{ const vs=g.bf.filter(c=>isCreature(c)&&!hasColor(c,'B')); for(const c of vs) if(onBf(c)) destroy(c); const died=vs.filter(c=>!onBf(c)).length; dealDamage(x.src,{kind:'player',pid:x.ctrl},died+3); }});
+D({id:'psychic_purge',name:'Psychic Purge',cost:'U',type:'Sorcery',target:TG.any,ai:'burn',n:1,text:'Psychic Purge deals 1 damage to any target. (The discard-by-opponent clause is not implemented.)',resolve:x=>damageRef(x.src,x.targets[0],1)});
+// walk-negating enchantments (affect everyone)
+for(const [id,nm,cost,land,wk] of [['crevasse','Crevasse','2R','Mountain','mountainwalk'],['deadfall','Deadfall','2G','Forest','forestwalk'],['great_wall','Great Wall','2W','Plains','plainswalk'],['quagmire','Quagmire','2B','Swamp','swampwalk'],['undertow','Undertow','2U','Island','islandwalk']])
+  D({id,name:nm,cost,type:'Enchantment',ai:'none',unwalkAll:[land],text:`Creatures with ${wk} can be blocked as though they didn't have ${wk}.`});
+// world enchantments
+D({id:'concordant_crossroads',name:'Concordant Crossroads',cost:'G',type:'Enchantment',world:true,ai:'none',text:'World enchantment. All creatures have haste.'});
+D({id:'gravity_sphere',name:'Gravity Sphere',cost:'2R',type:'Enchantment',world:true,ai:'none',text:'World enchantment. All creatures lose flying.'});
+D({id:'storm_world',name:'Storm World',cost:'R',type:'Enchantment',world:true,ai:'none',text:'World enchantment. At the beginning of each player\'s upkeep, Storm World deals X damage to that player, where X is 4 minus the number of cards in their hand.',upkeep:x=>{ const n=4-g.players[x.pid].hand.length; if(n>0) dealDamage(x.src,{kind:'player',pid:x.pid},n); }});
+D({id:'the_abyss',name:'The Abyss',cost:'3B',type:'Enchantment',world:true,ai:'none',text:'World enchantment. At the beginning of each player\'s upkeep, destroy target nonartifact creature that player controls of their choice. It can\'t be regenerated.',upkeep:async x=>{ const cs=g.bf.filter(c=>isCreature(c)&&!isArtifact(c)&&ctrl(c)===x.pid); if(!cs.length) return; let t; if(cs.length===1||aiQ(x.pid)||HEADLESS) t=cs.slice().sort((a,b)=>val(a)-val(b))[0]; else { const id=await askChoice('The Abyss','Choose a nonartifact creature you control to destroy.',cs.map(c=>[String(c.iid),c.d.name])); t=cs.find(c=>String(c.iid)===id)||cs[0]; } log(`The Abyss destroys ${t.d.name}.`); destroy(t,true); }});
+D({id:'underworld_dreams',name:'Underworld Dreams',cost:'BBB',type:'Enchantment',ai:'none',text:'Whenever an opponent draws a card, Underworld Dreams deals 1 damage to that player.'});
+D({id:'demonic_torment',name:'Demonic Torment',cost:'2B',type:'Enchantment',sub:'Aura',target:TG.creature,aura:{noCombat:true,noAtk:true},ai:'none',text:'Enchant creature. Enchanted creature can\'t attack. Prevent all combat damage that would be dealt by enchanted creature.'});
+D({id:'horror_of_horrors',name:'Horror of Horrors',cost:'3BB',type:'Enchantment',ai:'none',text:'Sacrifice a Swamp: Regenerate target black creature.',abilities:[{cost:'',target:{k:'card',f:c=>isCreature(c)&&hasColor(c,'B'),label:'a black creature'},ai:'none',resolve:x=>{ const sw=g.bf.find(l=>isLand(l)&&ctrl(l)===x.ctrl&&hasLT(l,'Swamp')); const t=tObj(x.targets[0]); if(!sw||!t||!onBf(t)) return; sacrifice(sw); t.regen++; log(`${t.d.name} gains a regeneration shield.`); }}]});
+// artifacts
+D({id:'planar_gate',name:'Planar Gate',cost:'6',type:'Artifact',ai:'artifact',aiScore:10,text:'Creature spells you cast cost {2} less to cast.'});
+D({id:'mana_matrix',name:'Mana Matrix',cost:'6',type:'Artifact',ai:'artifact',aiScore:10,text:'Instant and enchantment spells you cast cost {2} less to cast.'});
+D({id:'horn_of_deafening',name:'Horn of Deafening',cost:'4',type:'Artifact',ai:'artifact',aiScore:8,text:'{2}, {T}: Prevent all combat damage that would be dealt by target creature this turn.',abilities:[noCombatAb('2')]});
+D({id:'kry_shield',name:'Kry Shield',cost:'2',type:'Artifact',ai:'artifact',aiScore:6,text:'{2}, {T}: Prevent all damage that would be dealt this turn by target creature you control. That creature gets +0/+X until end of turn, where X is its mana value.',abilities:[{cost:'2',tap:true,target:{k:'card',f:(c,src)=>isCreature(c)&&ctrl(c)===ctrl(src),label:'a creature you control'},ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.noDmgOut=g.turn; t.temp.t+=cmcOf(t.d); } }}]});
+D({id:'al_abaras_carpet',name:"Al-abara's Carpet",cost:'5',type:'Artifact',ai:'artifact',aiScore:6,text:'{5}, {T}: Prevent all damage that would be dealt to you this turn by attacking creatures without flying.',abilities:[{cost:'5',tap:true,ai:'none',resolve:x=>{ g.players[x.ctrl].carpet=g.turn; log('Damage from attacking creatures without flying will be prevented.'); }}]});
+D({id:'mirror_universe',name:'Mirror Universe',cost:'6',type:'Artifact',ai:'none',text:'{T}, Sacrifice Mirror Universe: Exchange life totals with target opponent. Activate only during your upkeep.',abilities:[{cost:'',tap:true,upkeepOnly:true,target:TG.oppPlayer,ai:'none',resolve:x=>{ const me=g.players[x.ctrl], op=g.players[x.targets[0].pid]; if(onBf(x.src)) sacrifice(x.src); const t=me.life; me.life=op.life; op.life=t; log(`${me.name} and ${op.name} exchange life totals.`); }}]});
+D({id:'djinn_token',name:'Djinn',cost:'',type:'Artifact Creature',sub:'Djinn',p:5,t:5,kw:['flying'],token:true,ai:'creature',text:'Token.'});
+D({id:'bottle_of_suleiman',name:'Bottle of Suleiman',cost:'4',type:'Artifact',ai:'none',text:'{1}, Sacrifice Bottle of Suleiman: Flip a coin. If you win the flip, create a 5/5 colorless Djinn artifact creature token with flying. If you lose the flip, Bottle of Suleiman deals 5 damage to you.',abilities:[{cost:'1',ai:'none',resolve:x=>{ if(!onBf(x.src)) return; sacrifice(x.src); if(Math.random()<.5){ log('The coin flip is won: a Djinn emerges.'); makeToken(x.ctrl,'djinn_token'); } else { log('The coin flip is lost.'); dealDamage(x.src,{kind:'player',pid:x.ctrl},5); } }}]});
+for(const [col,nm] of [['W','White'],['U','Blue'],['B','Black'],['R','Red'],['G','Green']])
+  D({id:nm.toLowerCase()+'_mana_battery',name:nm+' Mana Battery',cost:'4',type:'Artifact',ai:'none',text:`{2}, {T}: Put a charge counter on ${nm} Mana Battery. {T}: Remove all charge counters from it and add {${col}} plus {${col}} for each counter removed. (Adds the mana when the ability resolves.)`,abilities:[{cost:'2',tap:true,ai:'none',resolve:x=>{ if(onBf(x.src)) x.src.counters++; }},{cost:'',tap:true,ai:'none',resolve:x=>{ if(!onBf(x.src)) return; const n=1+x.src.counters; x.src.counters=0; g.players[x.ctrl].pool[col]+=n; log(`${nm} Mana Battery adds ${n} ${col} mana.`); }}]});
+// legendary & utility lands
+D({id:'hammerheim',name:'Hammerheim',cost:'',type:'Legendary Land',produce:'R',ai:'none',text:'{T}: Add {R}. {T}: Target creature loses all landwalk abilities until end of turn.',abilities:[{cost:'',tap:true,target:TG.creature,ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)) t.temp.lose=(t.temp.lose||[]).concat(Object.keys(WALKS)); }}]});
+D({id:'urborg',name:'Urborg',cost:'',type:'Legendary Land',produce:'B',ai:'none',text:'{T}: Add {B}. {T}: Target creature loses first strike or swampwalk until end of turn.',abilities:[{cost:'',tap:true,target:TG.creature,ai:'none',resolve:async x=>{ const t=tObj(x.targets[0]); if(!t||!onBf(t)) return; let k='firstStrike'; if(hasKw(t,'swampwalk')&&(!hasKw(t,'firstStrike')||(!aiQ(x.ctrl)&&!HEADLESS&&await askChoice('Urborg','Which ability is lost?',[['firstStrike','First strike'],['swampwalk','Swampwalk']])==='swampwalk'))) k='swampwalk'; t.temp.lose=(t.temp.lose||[]).concat([k]); log(`${t.d.name} loses ${k==='swampwalk'?'swampwalk':'first strike'}.`); }}]});
+D({id:'karakas',name:'Karakas',cost:'',type:'Legendary Land',produce:'W',ai:'none',text:'{T}: Add {W}. {T}: Return target legendary creature to its owner\'s hand.',abilities:[{cost:'',tap:true,target:{k:'card',f:c=>isCreature(c)&&/Legendary/.test(c.d.type),label:'a legendary creature'},ai:'none',resolve:x=>bounceTo(tObj(x.targets[0]))}]});
+D({id:'pendelhaven',name:'Pendelhaven',cost:'',type:'Legendary Land',produce:'G',ai:'none',text:'{T}: Add {G}. {T}: Target 1/1 creature gets +1/+2 until end of turn.',abilities:[{cost:'',tap:true,target:{k:'card',f:c=>isCreature(c)&&pow(c)===1&&tough(c)===1,label:'a 1/1 creature'},ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.temp.p+=1; t.temp.t+=2; } }}]});
+D({id:'tolaria',name:'Tolaria',cost:'',type:'Legendary Land',produce:'U',ai:'none',text:'{T}: Add {U}. {T}: Target creature loses banding until end of turn. Activate only during an upkeep step.',abilities:[{cost:'',tap:true,target:TG.creature,upkeepOnly:true,ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)) t.temp.lose=(t.temp.lose||[]).concat(['banding']); }}]});
+D({id:'diamond_valley',name:'Diamond Valley',cost:'',type:'Land',produce:'',ai:'none',text:'{T}, Sacrifice a creature: You gain life equal to the sacrificed creature\'s toughness.',abilities:[sacAb('',true,{k:'card',f:(c,src)=>isCreature(c)&&ctrl(c)===ctrl(src),label:'a creature you control'},(x,t)=>{ gainLife(x.ctrl,Math.max(0,tough(t))); },{ai:'none'})]});
+D({id:'elephant_graveyard',name:'Elephant Graveyard',cost:'',type:'Land',produce:'C',ai:'none',text:'{T}: Add {C}. {T}: Regenerate target Elephant.',abilities:[{cost:'',tap:true,target:{k:'card',f:c=>isCreature(c)&&/Elephant/.test(c.d.sub||''),label:'an Elephant'},ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.regen++; log(`${t.d.name} gains a regeneration shield.`); } }}]});
+D({id:'the_tabernacle_at_pendrell_vale',name:'The Tabernacle at Pendrell Vale',cost:'',type:'Legendary Land',produce:'',ai:'none',text:'All creatures have "At the beginning of your upkeep, destroy this creature unless you pay {1}."',upkeep:async x=>{ for(const c of g.bf.filter(k=>isCreature(k)&&ctrl(k)===x.pid)){ if(!onBf(c)) continue; if(!(await upkeepMay({src:c,pid:x.pid},'1',`Pay {1} to keep ${c.d.name}? (Tabernacle)`,'Destroy it'))){ log(`${c.d.name} is destroyed (The Tabernacle).`); destroy(c); } } }});
 
 function mkCard(id,owner){ return {iid:IID++,id,d:DB[id],owner,own0:owner,controller:owner,zone:'library',tapped:false,sick:false,damage:0,counters:0,temp:{p:0,t:0,kw:[]},attachedTo:null,regen:0,damagedBy:new Set(),attacking:false,blocking:null,blockedBy:[],wasBlocked:false,shield:0,band:null}; }
 function byIid(i){ return g.cards.get(i); }
@@ -1795,9 +1998,9 @@ function anthems(){ return g.bf.filter(a=>a.d.anthem); }
 function anthemOn(a,c){ const m=a.d.anthem; if(m.mine&&ctrl(a)!==ctrl(c)) return false; if(m.cond&&!m.cond(a)) return false; const mcol=m.color&&a.sleight&&a.sleight.from===m.color?a.sleight.to:m.color; return (mcol&&hasColor(c,mcol))||(m.sub&&c!==a&&isCreature(c)&&(c.d.sub||'').split(' ').includes(m.sub)); }
 function gmod(c,w){ let v=0; for(const a of g.bf){ const d=a.d; if(d.ctrlBonus&&ctrl(a)===ctrl(c)) v+=d.ctrlBonus(a,c,w); if(w==='p'){ if(d.atkP&&c.attacking&&ctrl(a)===ctrl(c)) v+=d.atkP; if(d.atkAllP&&c.attacking) v+=d.atkAllP; } else if(d.untapT&&!c.tapped&&ctrl(a)===ctrl(c)) v+=d.untapT; } if(w==='p'&&c.d.unblockedP&&c.attacking&&!c.wasBlocked) v+=c.d.unblockedP; for(const h of g.bf) if(h.holds&&h.tapped&&h.holds.iid===c.iid) v+=h.holds[w]||0; return v; }
 function pow(c){ let v=(c.d.dyn?c.d.dyn(c):(c.animated?c.animated.p:(c.form?c.form.p:(animAura(c)?cmcOf(c.d):(staticAnim(c)?staticAnim(c).p:(c.d.p||0))))))+c.counters+c.temp.p+(c.d.pBonus?c.d.pBonus(c):0); if(c.zone==='bf'){ v+=gmod(c,'p'); for(const a of auras(c)) v+=(a.d.aura.p||0)+(a.d.aura.pf?a.d.aura.pf(a):0); for(const a of anthems()) if(anthemOn(a,c)) v+=a.d.anthem.p; } return v; }
-function tough(c){ let v=(c.d.dyn?c.d.dyn(c):(c.animated?c.animated.t:(c.form?c.form.t:(animAura(c)?cmcOf(c.d):(staticAnim(c)?staticAnim(c).t:(c.d.t||0))))))+c.counters+c.temp.t-2*(c.shk||0)+(c.d.tBonus?c.d.tBonus(c):0); if(c.zone==='bf'){ v+=gmod(c,'t'); for(const a of auras(c)) v+=(a.d.aura.t||0)+(a.d.aura.tf?a.d.aura.tf(a):0); for(const a of anthems()) if(anthemOn(a,c)) v+=a.d.anthem.t; } return v; }
+function tough(c){ let v=(c.d.dyn?c.d.dyn(c):(c.animated?c.animated.t:(c.form?c.form.t:(animAura(c)?cmcOf(c.d):(staticAnim(c)?staticAnim(c).t:(c.d.t||0))))))+c.counters+(c.tcnt||0)+c.temp.t-2*(c.shk||0)+(c.d.tBonus?c.d.tBonus(c):0); if(c.zone==='bf'){ v+=gmod(c,'t'); for(const a of auras(c)) v+=(a.d.aura.t||0)+(a.d.aura.tf?a.d.aura.tf(a):0); for(const a of anthems()) if(anthemOn(a,c)) v+=a.d.anthem.t; } return v; }
 function hasKw(c,k){ if(c.hack){ const f=c.hack.from.toLowerCase()+'walk', t=c.hack.to.toLowerCase()+'walk'; if(k===f) return false; if(k===t) return hasKw0(c,f)||hasKw0(c,t); } if(c.sleight){ const f='pro'+c.sleight.from, t='pro'+c.sleight.to; if(k===f) return false; if(k===t) return hasKw0(c,f)||hasKw0(c,t); } return hasKw0(c,k); }
-function hasKw0(c,k){ if(k==='flying'&&(c.temp.noFly||(c.zone==='bf'&&g.bf.some(a=>a.loseFly&&a.attachedTo===c.iid)))) return false; if(c.grantKw&&c.grantKw.includes(k)) return true; if(c.d.kw.includes(k)||c.temp.kw.includes(k)) return true; if(c.zone==='bf'){ for(const a of auras(c)) if(a.d.aura.kw&&a.d.aura.kw.includes(k)) return true; for(const a of anthems()) if(a.d.anthem.grant===k&&anthemOn(a,c)) return true; } return false; }
+function hasKw0(c,k){ if(c.temp&&c.temp.lose&&c.temp.lose.includes(k)) return false; if(c.zone==='bf'&&typeof g!=='undefined'&&g&&g.bf){ if(k==='flying'&&g.bf.some(a=>a.d.id==='gravity_sphere')) return false; if(k==='haste'&&isCreature(c)&&g.bf.some(a=>a.d.id==='concordant_crossroads')) return true; } if(k==='flying'&&(c.temp.noFly||(c.zone==='bf'&&g.bf.some(a=>a.loseFly&&a.attachedTo===c.iid)))) return false; if(c.grantKw&&c.grantKw.includes(k)) return true; if(c.d.kw.includes(k)||c.temp.kw.includes(k)) return true; if(c.zone==='bf'){ for(const a of auras(c)) if(a.d.aura.kw&&a.d.aura.kw.includes(k)) return true; for(const a of anthems()) if(a.d.anthem.grant===k&&anthemOn(a,c)) return true; } return false; }
 function protectedFrom(c,src){ if(!src) return false; for(const col of colorsOfD(src.d)) if(hasKw(c,'pro'+col)) return true; return false; }
 function log(msg,who){ g.log.push({t:g.turn,who:who==null?null:who,msg}); if(g.log.length>400) g.log.shift(); }
 function playerName(p){ return g.players[p].name; }
@@ -1818,14 +2021,14 @@ function removeFrom(c){
   }
 }
 function leaveCombat(c){ c.attacking=false; c.blocking=null; for(const o of g.bf) o.blockedBy=o.blockedBy.filter(i=>i!==c.iid); }
-function moveTo(c,zone){ const from=c.zone; removeFrom(c); if(c.copy&&zone!=='bf'){ c.zone='gone'; if(from==='bf'&&zone==='graveyard'&&g&&g.bf&&isCreatureD(c.d)) g.died=(g.died||0)+1; return; } c.zone=zone; if(zone==='bf'){ c.wasSac=false; g.bf.push(c); } else g.players[c.owner][zone].push(c);
+function moveTo(c,zone){ const from=c.zone; removeFrom(c); if(c.copy&&zone!=='bf'){ c.zone='gone'; if(from==='bf'&&zone==='graveyard'&&g&&g.bf&&isCreatureD(c.d)) g.died=(g.died||0)+1; return; } c.zone=zone; if(zone==='bf'){ c.wasSac=false; c.arr=(g.arrN=(g.arrN||0)+1); g.bf.push(c); } else g.players[c.owner][zone].push(c);
   if(from==='bf'&&zone!=='bf'&&typeof g!=='undefined'&&g&&g.bf) for(const k of [...g.bf]) if(k.warBarge===c.iid){ k.warBarge=null; log(`${k.d.name} is destroyed (War Barge left the battlefield).`); destroy(k,true); }
   if(from==='bf'&&zone!=='bf'&&c.coffin) coffinRelease(c);
   if(from==='bf'&&zone==='graveyard'&&typeof g!=='undefined'&&g&&g.bf){ if(isCreatureD(c.d)) g.died=(g.died||0)+1;
     if(c.d.id==='lich') g.players[c.owner].lichLost=true;
     for(const k of [...g.bf]) if(k.linkDie===c.iid){ k.linkDie=null; log(`${k.d.name} is destroyed.`); destroy(k); }
     for(const k of [...g.bf]) if(k.d.onAnyDie&&k!==c){ const tr=k.d.onAnyDie(c,k); if(tr) g.stack.push({sid:SID++,kind:'ability',src:k,ab:{resolve:tr},ctrl:ctrl(k),targets:[],name:k.d.name+' (trigger)'}); } } }
-function drawCards(p,n,silent){ const P=g.players[p]; for(let i=0;i<n;i++){ if(P.ringId){ const id=P.ringId; P.ringId=null; const w=mkCard(id,p); g.cards.set(w.iid,w); w.zone='hand'; P.hand.push(w); P.lastDraw={c:w,turn:g.turn}; log(`${P.name} puts ${w.d.name} into their hand (Ring of Ma'rûf).`,p); continue; } if(!P.library.length){ P.decked=true; log(`${P.name} cannot draw — the library is empty.`); return; } if(P.lamp>0){ const X=P.lamp; P.lamp=0; const top=P.library.splice(Math.max(0,P.library.length-X),X); if(top.length){ const best=top.slice().sort((a,b)=>aiTutorScore(P,b)-aiTutorScore(P,a))[0]; P.library.unshift(...shuffle(top.filter(k=>k!==best))); P.library.push(best); log(`${P.name} looks at ${top.length} cards (Aladdin's Lamp) and keeps ${best.d.name}.`,p); } }
+function drawCards(p,n,silent){ const P=g.players[p]; if(n>0) for(const f of g.bf.filter(k=>k.d.id==='underworld_dreams'&&ctrl(k)===1-p)) for(let i=0;i<n;i++){ dealDamage(f,{kind:'player',pid:p},1); } if(n>0) for(const f of g.bf.filter(k=>k.d.id==='fasting'&&ctrl(k)===p)){ log('Fasting is destroyed (a card was drawn).'); destroy(f); } for(let i=0;i<n;i++){ if(P.ringId){ const id=P.ringId; P.ringId=null; const w=mkCard(id,p); g.cards.set(w.iid,w); w.zone='hand'; P.hand.push(w); P.lastDraw={c:w,turn:g.turn}; log(`${P.name} puts ${w.d.name} into their hand (Ring of Ma'rûf).`,p); continue; } if(!P.library.length){ P.decked=true; log(`${P.name} cannot draw — the library is empty.`); return; } if(P.lamp>0){ const X=P.lamp; P.lamp=0; const top=P.library.splice(Math.max(0,P.library.length-X),X); if(top.length){ const best=top.slice().sort((a,b)=>aiTutorScore(P,b)-aiTutorScore(P,a))[0]; P.library.unshift(...shuffle(top.filter(k=>k!==best))); P.library.push(best); log(`${P.name} looks at ${top.length} cards (Aladdin's Lamp) and keeps ${best.d.name}.`,p); } }
     const c=P.library.pop(); c.zone='hand'; P.hand.push(c); P.lastDraw={c,turn:g.turn}; } if(!silent) log(`${P.name} draws ${n===1?'a card':n+' cards'}.`,p); }
 function gainLife(p,n){ if(g.bf.some(k=>k.d.id==='lich'&&ctrl(k)===p)){ log(`${playerName(p)} draws ${n} card${n===1?'':'s'} instead of gaining life (Lich).`); drawCards(p,n,true); return; } g.players[p].life+=n; log(`${playerName(p)} gains ${n} life.`); }
 function tObj(ref){ return ref.kind==='player'?{kind:'player',pid:ref.pid}:byIid(ref.iid); }
@@ -1842,8 +2045,13 @@ function dealDamage(src,t,n,combat){
   if(t.kind==='card') t=byIid(t.iid);
   if(!t) return;
   if(t.kind!=='player'&&t.d){ if(auras(t).some(a=>a.d.id==='artifact_ward')&&isArtifact(src)) return; if(t.rdr&&t.rdr.length){ const i=t.rdr.findIndex(r=>r.src==='*'||r.src===src.iid); if(i>=0){ const r=t.rdr.splice(i,1)[0]; log(`Damage to ${t.d.name} is redirected to ${playerName(r.pid)}.`); if(r.src==='*'){ dealDamage(src,{kind:'player',pid:r.pid},1,combat); n-=1; if(n<=0) return; } else { dealDamage(src,{kind:'player',pid:r.pid},n,combat); return; } } } }
+  if(t.kind!=='player'&&t.noDmgIn===g.turn){ log(`Damage to ${t.d.name} is prevented.`); return; }
+  if(src&&src.zone==='bf'&&src.noDmgOut===g.turn) return;
+  if(t.kind==='player'&&combat&&g.players[t.pid].carpet===g.turn&&src.zone==='bf'&&isCreature(src)&&src.attacking&&!hasKw(src,'flying')){ log(`Damage from ${src.d.name} to ${playerName(t.pid)} is prevented.`); return; }
+  if(t.kind!=='player'&&t.d&&src.zone==='bf'&&isCreature(src)){ if(t.d.wallPrev&&t.blocking===src.iid) return; if(t.d.encPrev&&auras(src).length&&(combat||t.d.id==='wall_of_putrid_flesh')) return; }
   if(combat&&t.kind!=='player'&&((t.temp&&t.temp.noCombat)||auras(t).some(a=>a.d.aura.noCombat))) return;
   if(t.kind!=='player'&&t.d){ if(t.d.noArtDmg&&isArtifact(src)) return; if(t.d.noCreatureDmg&&isCreature(src)) return; }
+  if(t.kind==='player'&&g.players[t.pid].noFlyDmg===g.turn&&src.zone==='bf'&&isCreature(src)&&hasKw(src,'flying')){ log(`Damage from ${src.d.name} to ${playerName(t.pid)} is prevented.`); return; }
   if(t.kind==='player'){ const P=g.players[t.pid];
     for(const k of g.bf) if(k.d.guard&&ctrl(k)===t.pid&&!k.tapped&&k!==src&&k.d.guard(src,combat)){ log(`${k.d.name} takes the damage instead.`); dealDamage(src,k,n,combat); return; }
     if(P.fx&&P.fx.length){ for(const r of [...P.fx]){ if(r.iid!==src.iid) continue; if(r.mode==='ff'&&!combat) continue;
@@ -1878,6 +2086,7 @@ function dies(c){
   const wasCr=isCreature(c), by=[...c.damagedBy];
   const own=ctrl(c); const tf=wasCr?tough(c):0; log(`${c.d.name} ${wasCr?'dies':'is destroyed'}.`);
   if(wasCr) for(const a of auras(c)) if(a.d.onHostDie) a.d.onHostDie(a,c,own,tf);
+  if(wasCr&&c.d.bounceOnDie&&!c.copy){ log(`${c.d.name} returns to its owner's hand instead.`); moveTo(c,'hand'); return; }
   moveTo(c,c.d.exileOnDeath?'exile':'graveyard');
   if(wasCr&&c.d.onDie) c.d.onDie(c,own);
   if(wasCr) for(const i of by){ const s=byIid(i); if(s&&onBf(s)&&s.d.id==='sengir_vampire'){ s.counters++; log('Sengir Vampire grows stronger.'); } }
@@ -1892,6 +2101,11 @@ function sba(){ refreshHolds();
       if(!onBf(c)) continue;
       if(isCreature(c)){ const t=tough(c); if(t<=0){ dies(c); changed=true; } else if(c.damage>=t){ destroy(c); changed=true; } }
       else if(isAura(c)){ const h=byIid(c.attachedTo); if(!h||!onBf(h)||!(isCreature(h)||(c.d.aura.art&&isArtifact(h))||(c.d.aura.land&&isLand(h))||(c.d.aura.ench&&isEnch(h)))||(isCreature(h)&&protectedFrom(h,c)&&!c.d.aura.selfOK)){ log(`${c.d.name} falls off.`); moveTo(c,'graveyard'); changed=true; } }
+    }
+    if(!changed){
+      for(const pid of [0,1]){ const seen={};
+        for(const c of g.bf.filter(k=>ctrl(k)===pid&&/Legendary/.test(k.d.type)).sort((a,b)=>(b.arr||0)-(a.arr||0))){ if(seen[c.d.name]){ log(`${c.d.name} is put into the graveyard (legend rule).`); moveTo(c,'graveyard'); changed=true; } else seen[c.d.name]=1; } }
+      const wl=g.bf.filter(k=>k.d.world); if(wl.length>1){ const top=Math.max(...wl.map(k=>k.arr||0)); for(const c of wl) if((c.arr||0)<top){ log(`${c.d.name} is put into the graveyard (world rule).`); moveTo(c,'graveyard'); changed=true; } }
     }
   }
   checkOver();
@@ -1997,7 +2211,7 @@ function poolTotal(p){ return Object.values(g.players[p].pool).reduce((a,b)=>a+b
 function legal(spec,ref,src){
   if(!spec||!ref) return false;
   if(spec.k==='multi') return spec.specs.some(sp=>legal(sp,ref,src));
-  if(ref.kind==='player') return spec.k==='any'||spec.k==='player';
+  if(ref.kind==='player') return (spec.k==='any'||spec.k==='player')&&(!spec.pf||spec.pf(ref.pid,src));
   if(ref.kind==='stack') return spec.k==='spell'&&g.stack.some(s=>s.sid===ref.sid&&s.kind==='spell'&&(!spec.f||spec.f(s)));
   if(ref.kind==='gy'){ if(spec.k!=='gy') return false; const gc=byIid(ref.iid); return !!gc&&gc.zone==='graveyard'&&(!spec.f||spec.f(gc,src)); }
   const c=byIid(ref.iid); if(!c||!onBf(c)) return false;
@@ -2097,6 +2311,7 @@ async function resolveTop(){
 
 /* ----- turn structure ----- */
 const STEPS=[['untap','Untap'],['upkeep','Upkeep'],['draw','Draw'],['main1','Main 1'],['attack','Attack'],['block','Block'],['damage','Damage'],['main2','Main 2'],['end','End']];
+function drainMana(p){ const P=g.players[p]; if(P.drain){ P.pool.C+=P.drain; log(`${P.name} adds ${P.drain} colorless mana (Mana Drain).`,p); P.drain=0; } }
 function setStep(s){ if(globalThis.__probe) globalThis.__probe(); if(s==='main2'||s==='end') for(const c of g.bf) if(c.animated&&c.animated.untilCombatEnd) c.animated=null;
   for(const P of g.players){ const n=poolTotal(P.id); if(n>0){ P.life-=n; log(`${P.name} takes ${n} mana burn.`); } P.pool=zeroPool(); }
   g.step=s; render(); sba();
@@ -2149,7 +2364,7 @@ async function runTurn(){
   limit(g.bf.some(k=>k.d.id==='damping_field'),isArtifact); limit(g.bf.some(k=>k.d.id==='smoke'),isCreature);
   const meek=g.bf.some(k=>k.d.id==='meekstone');
   for(const c of g.bf) if(ctrl(c)===ap){ const stay=lim.has(c)||!!c.coffin||(g.bf.some(k=>k.d.id==='magnetic_mountain')&&isCreature(c)&&hasColor(c,'U'))||(c.holds&&c.tapped&&!c.holds.anyTap)||auras(c).some(a=>a.d.aura&&a.d.aura.noUntap)||g.bf.some(h=>h.holds&&h.holds.lock&&h.tapped&&h.holds.iid===c.iid)||(c.skipUntap>0)||(meek&&isCreature(c)&&pow(c)>=3)||(c.d.id==='goblin_rock_sled'&&c.attackedTurn===g.turn-2); if(!c.d.noUntap&&!stasis&&!stay&&(!orb||!isLand(c)||orbPick.has(c))) c.tapped=false; c.sick=false; }
-  for(const c of g.bf) if(ctrl(c)===ap&&c.skipUntap>0) c.skipUntap=0;
+  for(const c of g.bf) if(ctrl(c)===ap&&c.skipUntap>0) c.skipUntap--;
   render(); await pause(200);
   setStep('upkeep');
   for(const c of g.bf) if(c.animated&&c.animated.keep===ap) c.animated=null;
@@ -2162,14 +2377,16 @@ async function runTurn(){
   { const AP=g.players[ap]; while(AP.asp>0){ AP.asp--; if(!(await upkeepPay({pid:ap,src:{d:{name:'Nafs Asp'}}},'1','You lose 1 life'))){ AP.life-=1; log(`${AP.name} loses 1 life (Nafs Asp).`); } } }
   if(g.turn>1){ let skipDraw=false;
     if(g.bf.some(k=>k.d.id==='island_sanctuary'&&ctrl(k)===ap)&&!aiQ(ap)&&!HEADLESS) skipDraw=(await askChoice('Island Sanctuary','Skip your draw to be attackable only by flying and islandwalk creatures until your next turn?',[['y','Skip the draw'],['n','Draw a card']]))==='y';
-    if(skipDraw){ g.players[ap].sanct=true; log(`${playerName(ap)} skips the draw (Island Sanctuary).`); } else { drawCards(ap,1); await sylvanDraw(ap); } }
+    const fast=g.bf.find(k=>k.d.id==='fasting'&&ctrl(k)===ap); let fastSkip=false;
+    if(fast&&!skipDraw){ if(!aiQ(ap)&&!HEADLESS) skipDraw=(await askChoice('Fasting','Skip your draw step and gain 2 life? (Fasting stays.)',[['y','Skip draw, gain 2 life'],['n','Draw (destroys Fasting)']]))==='y'; if(skipDraw){ fastSkip=true; gainLife(ap,2); log(`${playerName(ap)} skips the draw step (Fasting).`); } }
+    if(fastSkip){} else if(skipDraw){ g.players[ap].sanct=true; log(`${playerName(ap)} skips the draw (Island Sanctuary).`); } else { drawCards(ap,1); await sylvanDraw(ap); } }
   for(const k of g.bf.filter(c=>c.d.id==='armageddon_clock'&&ctrl(c)===ap&&c.doom>0)){ log(`Armageddon Clock deals ${k.doom} damage to each player.`); for(const q of [0,1]) dealDamage(k,{kind:'player',pid:q},k.doom); sba(); }
   for(const m of g.bf.filter(c=>c.d.id==='howling_mine'&&!c.tapped)){ drawCards(ap,1); log('Howling Mine gives an extra card.'); }
   sba(); render();
   await priorityRound({});
-  setStep('main1'); await priorityRound({main:true});
+  setStep('main1'); drainMana(ap); await priorityRound({main:true});
   await combat();
-  setStep('main2'); await priorityRound({main:true});
+  setStep('main2'); drainMana(ap); await priorityRound({main:true});
   setStep('end'); await priorityRound({stop:true});
   for(const c of [...g.bf]){
     if(c.d.id==='pestilence'&&!g.bf.some(isCreature)){ log('Pestilence is sacrificed — no creatures remain.'); sacrifice(c); }
@@ -2210,12 +2427,16 @@ async function priorityRound(opts){
 async function givePriority(p,opts){ return g.players[p].remote?remotePriority(p,opts):g.players[p].ai?aiPriority(p,opts):humanPriority(opts); }
 
 /* ----- combat ----- */
-function canAttack(c,p){ if(c.cantAttackTurn===g.turn) return false; if(g.players[1-p].sanct&&!hasKw(c,'flying')&&!hasKw(c,'islandwalk')) return false; if(c.d.id==='giant_turtle'&&c.attackedTurn===g.turn-2) return false; if(g.bf.some(m=>m.d.id==='moat')&&!hasKw(c,'flying')) return false; if((c.d.id==='sea_serpent'||c.d.id==='dandan')&&!g.bf.some(l=>isLand(l)&&hasLT(l,'Island')&&ctrl(l)===1-p)) return false;
+function canAttack(c,p){ if(c.cantAttackTurn===g.turn||g.noAtkTurn===g.turn) return false; if(g.players[1-p].sanct&&!hasKw(c,'flying')&&!hasKw(c,'islandwalk')) return false; if(c.d.id==='giant_turtle'&&c.attackedTurn===g.turn-2) return false; if(g.bf.some(m=>m.d.id==='moat')&&!hasKw(c,'flying')) return false; if((c.d.id==='sea_serpent'||c.d.id==='dandan')&&!g.bf.some(l=>isLand(l)&&hasLT(l,'Island')&&ctrl(l)===1-p)) return false;
   if(c.d.needLand&&!g.bf.some(l=>isLand(l)&&hasLT(l,hackW(c,c.d.needLand))&&ctrl(l)===1-p)) return false;
+  if(auras(c).some(a=>a.d.aura&&a.d.aura.noAtk)) return false;
+  if(g.bf.some(k=>k.d.id==='akron_legionnaire'&&ctrl(k)===p)&&c.d.id!=='akron_legionnaire'&&!isArtifact(c)) return false;
+  if(g.bf.some(k=>k.d.id==='evil_eye_of_orms_by_gore'&&ctrl(k)===p)&&c.d.id!=='evil_eye_of_orms_by_gore') return false;
   return isCreature(c)&&ctrl(c)===p&&!c.tapped&&(!c.sick||hasKw(c,'haste'))&&(!hasKw(c,'defender')||hasKw(c,'canAtk')); }
 const WALKS={forestwalk:'Forest',islandwalk:'Island',swampwalk:'Swamp',mountainwalk:'Mountain',plainswalk:'Plains'};
 function canBlock(b,a){
   if(!isCreature(b)||b.tapped||!onBf(b)||ctrl(b)===ctrl(a)) return false;
+  if(a.temp&&a.temp.noWall&&/Wall/.test(b.d.sub||'')) return false;
   if(hasKw(a,'flying')&&!hasKw(b,'flying')&&!hasKw(b,'reach')) return false;
   if(b.d.id==='cloud_pirates'&&!hasKw(a,'flying')) return false;
   if(b.d.id==='ironclaw_orcs'&&pow(a)>=2) return false;
@@ -2228,7 +2449,9 @@ function canBlock(b,a){
   if(hasKw(a,'seeker')&&!(isArtifact(b)||hasColor(b,'W'))) return false;
   if(protectedFrom(a,b)) return false;
   if(a.d.id==='juggernaut'&&/Wall/.test(b.d.sub||'')) return false;
-  for(const [k,land] of Object.entries(WALKS)) if(hasKw(a,k)&&g.bf.some(l=>isLand(l)&&ctrl(l)===ctrl(b)&&hasLT(l,land))) return false;
+  if(a.d.id==='evil_eye_of_orms_by_gore'&&!/Wall/.test(b.d.sub||'')) return false;
+  if(hasKw(a,'legendwalk')&&g.bf.some(l=>isLand(l)&&ctrl(l)===ctrl(b)&&/Legendary/.test(l.d.type))) return false;
+  for(const [k,land] of Object.entries(WALKS)) if(hasKw(a,k)&&g.bf.some(l=>isLand(l)&&ctrl(l)===ctrl(b)&&hasLT(l,land))&&!g.bf.some(u=>(u.d.unwalk&&u.d.unwalk.includes(land)&&ctrl(u)===ctrl(b))||(u.d.unwalkAll&&u.d.unwalkAll.includes(land)))) return false;
   return true;
 }
 async function atkTaxOK(a,ap){
@@ -2257,6 +2480,7 @@ async function combat(){
   const bandIt=atk.length>=2&&atk.some(c=>hasKw(c,'banding'))?(g.players[ap].ai?true:await askBand()):false;
   for(const a of atk){ a.attacking=true; if(!hasKw(a,'vigilance')){ a.tapped=true; shackleTap(a); } a.band=bandIt?1:null; }
   log(`${playerName(ap)} attacks with ${atk.map(a=>a.d.name).join(', ')}${bandIt?' as a band':''}.`,ap);
+  if(atk.length) g.players[ap].atkTurn=g.turn;
   for(const a of atk){ a.attackedTurn=g.turn; if(a.d.onAttack) await a.d.onAttack(a,ap); }
   await ragingRiver(atk,ap,dp);
   render(); await pause(350);
@@ -2271,6 +2495,7 @@ async function combat(){
     for(const [b,a] of blocks2) if(onBf(b)&&onBf(a)&&a.attacking&&(!b.blocking||b.multi===g.turn)&&canBlock(b,a)){ if(b.blocking!=null) (b.blockAlso=b.blockAlso||[]).push(a.iid); else b.blocking=a.iid; a.blockedBy.push(b.iid); a.wasBlocked=true; bl.push(`${b.d.name} blocks ${a.d.name}`); if(b.d.onBlock) b.d.onBlock(b,a); }
     log(bl.length?bl.join('; ')+'.':`${playerName(dp)} declares no blocks.`,dp);
     if(bandIt){ const mem=live().filter(a=>a.band===1); if(mem.some(a=>a.wasBlocked)){ const BL=new Set(); for(const a of mem) for(const i of a.blockedBy) BL.add(i); for(const a of mem){ a.wasBlocked=true; a.blockedBy=[...BL]; } log('The whole band is blocked.'); } }
+    for(const a of live()){ const rk=[1,2,3].find(n=>hasKw(a,'rampage'+n)); const nb=a.blockedBy.length; if(rk&&nb>=2){ a.temp.p+=rk*(nb-1); a.temp.t+=rk*(nb-1); log(`${a.d.name} rampages (+${rk*(nb-1)}/+${rk*(nb-1)}).`); } }
     render(); await pause(350);
     for(const a of live()) if(a.attacking&&!a.wasBlocked&&a.d.onUnblocked) a.d.onUnblocked(a);
     await priorityRound({stop:true});
@@ -2765,7 +2990,7 @@ const PIPNAME={W:'White mana',U:'Blue mana',B:'Black mana',R:'Red mana',G:'Green
 function pipHTML(t){ if(t==='T') return '<span class="pip p-T" title="Tap this card" aria-label="tap">⤵</span>'; if(/^\d+$/.test(t)) return `<span class="pip p-N" title="${t} generic mana" aria-label="${t} generic">${t}</span>`; if(t==='X') return '<span class="pip p-N" title="X: any amount of mana" aria-label="X">X</span>'; return `<span class="pip p-${t}" title="${PIPNAME[t]||t}" aria-label="${PIPNAME[t]||t}">${t}</span>`; }
 function costHTML(s){ if(s===''||s==null) return ''; return ((s.match(/\d+|[WUBRGX]/g))||[]).map(pipHTML).join(''); }
 function textHTML(t){ return esc(t).replace(/\{(\w)\}/g,(m,k)=>pipHTML(k==='C'?'1':k)); }
-function frameOf(d){ if(/Land/.test(d.type)) return 'L'; const cs=colorsOfD(d); if(cs.length===1) return cs[0]; if(/Artifact/.test(d.type)) return 'A'; return cs[0]||'A'; }
+function frameOf(d){ if(/Land/.test(d.type)) return 'L'; const cs=colorsOfD(d); if(cs.length===1) return cs[0]; if(cs.length>1) return 'M'; if(/Artifact/.test(d.type)) return 'A'; return cs[0]||'A'; }
 function typeLine(d){ return d.type+(d.sub?' — '+d.sub:''); }
 function ptStar(d,k){ return (d.dyn&&!d.p&&!d.t)?'*':d[k]; }
 function ptHTML(c){
@@ -2781,7 +3006,7 @@ function ptHTML(c){
    ===================================================================== */
 function hash32(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
 function mulberry(a){ return ()=>{ a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return((t^(t>>>14))>>>0)/4294967296; }; }
-const ARTPAL={W:['#fbf3d6','#e2c978','#8f7638'],U:['#bcdcf6','#5b93cf','#1b3a68'],B:['#8c7b86','#43383f','#110c10'],R:['#fbc08f','#d4552f','#541a0d'],G:['#c3e3a2','#58a05a','#17391c'],A:['#e9e3d7','#9d9285','#3b342d'],L:['#eadcae','#9a8758','#43381f']};
+const ARTPAL={W:['#fbf3d6','#e2c978','#8f7638'],U:['#bcdcf6','#5b93cf','#1b3a68'],B:['#8c7b86','#43383f','#110c10'],R:['#fbc08f','#d4552f','#541a0d'],G:['#c3e3a2','#58a05a','#17391c'],A:['#e9e3d7','#9d9285','#3b342d'],L:['#eadcae','#9a8758','#43381f'],M:['#f4e6a6','#c79a2e','#5b3f0a']};
 const artCache={};
 /* ---- downloaded card art (desktop builds only; the player's own cache, never bundled) ---- */
 const HAS_NATIVE=(typeof window!=='undefined')&&!!window.shNative;
@@ -2887,7 +3112,7 @@ function cardFace(d,extra,cls,attrs,c){
 }
 function targetRefFor(c){ return {kind:'card',iid:c.iid}; }
 function isValidTarget(ref){ return ui.targeting&&legal(ui.targeting.spec,ref,ui.targeting.src); }
-const KWSHOW=[['flying','Flying'],['firstStrike','First strike'],['trample','Trample'],['haste','Haste'],['vigilance','Vigilance'],['reach','Reach'],['banding','Banding'],['defender','Defender'],['fear','Fear'],['islandwalk','Islandwalk'],['mountainwalk','Mountainwalk'],['swampwalk','Swampwalk'],['forestwalk','Forestwalk'],['plainswalk','Plainswalk']];
+const KWSHOW=[['flying','Flying'],['firstStrike','First strike'],['trample','Trample'],['haste','Haste'],['vigilance','Vigilance'],['reach','Reach'],['banding','Banding'],['rampage1','Rampage 1'],['rampage2','Rampage 2'],['rampage3','Rampage 3'],['defender','Defender'],['fear','Fear'],['islandwalk','Islandwalk'],['mountainwalk','Mountainwalk'],['swampwalk','Swampwalk'],['forestwalk','Forestwalk'],['plainswalk','Plainswalk']];
 function kwChips(c){
   const o=[]; for(const [k,l] of KWSHOW){ let h=false; try{ h=hasKw(c,k); }catch(e){} if(h) o.push(l); }
   for(const col of COLORS){ let h=false; try{ h=hasKw(c,'pro'+col); }catch(e){} if(h) o.push('Pro-'+({W:'white',U:'blue',B:'black',R:'red',G:'green'}[col])); }
@@ -2911,6 +3136,7 @@ function bfCardHTML(c){
   const b=[];
   if(c.damage>0) b.push(`<span class="badge dmg">${c.damage} damage</span>`);
   if(c.counters>0) b.push(`<span class="badge">+${c.counters}/+${c.counters}</span>`);
+  if(c.tcnt>0) b.push(`<span class="badge">+0/+${c.tcnt}</span>`);
   if(c.regen>0) b.push(`<span class="badge">Regen</span>`);
   const kws=kwChips(c).map(k=>`<span class="kw">${k}</span>`).join('');
   const stat=isCreature(c)?(()=>{ const p=pow(c),t=tough(c)-c.damage; const k=(v,bb)=>v>bb?'up':v<bb?'dn':''; return `<div class="pt"><span class="${k(p,d.p)}">${p}</span><i>/</i><span class="${k(t,d.t)}">${t}</span></div>`; })():'';
@@ -2935,7 +3161,7 @@ function landsHTML(pid){
     const d=cs[0].d, unt=cs.filter(c=>!c.tapped).length;
     const valid=ui.targeting&&cs.some(c=>legal(ui.targeting.spec,targetRefFor(c),ui.targeting.src));
     const dots=cs.map(c=>`<span class="dot ${c.tapped?'t':''}"></span>`).join('');
-    return `<button class="landg f-L ${valid?'valid':''} ${unt?'':'dim'}" data-land="${d.id}" data-owner="${pid}" title="${esc(d.name)}: ${unt} of ${cs.length} untapped" aria-label="${esc(d.name)}, ${unt} of ${cs.length} untapped"><span class="lp">${[...d.produce].map(pipHTML).join('')}</span><span class="ln">${esc(d.name)}</span><span class="lc"><b>${unt}</b>/${cs.length}</span><span class="dots">${dots}</span></button>`;
+    return `<button class="landg f-L ${valid?'valid':''} ${unt?'':'dim'}" data-land="${d.id}" data-owner="${pid}" title="${esc(d.name)}: ${unt} of ${cs.length} untapped" aria-label="${esc(d.name)}, ${unt} of ${cs.length} untapped"><span class="lp">${[...(d.produce||'')].map(pipHTML).join('')}</span><span class="ln">${esc(d.name)}</span><span class="lc"><b>${unt}</b>/${cs.length}</span><span class="dots">${dots}</span></button>`;
   }).join('');
 }
 function densCls(n){ return n>14?'dens2':n>8?'dens1':''; }
@@ -3226,13 +3452,13 @@ function addCard(id,dlt){
   if(n<=0) delete db.deck.cards[id]; else db.deck.cards[id]=n;
   saveStore(); renderDeck();
 }
-const SORTKEY=d=>{ const f=frameOf(d); return ['W','U','B','R','G','A','L'].indexOf(f)*100+cmcOf(d); };
+const SORTKEY=d=>{ const f=frameOf(d); return ['W','U','B','R','G','M','A','L'].indexOf(f)*100+cmcOf(d); };
 function poolCards(){
   return Object.values(DB).filter(d=>{
     if(d.token) return false;
     if(ui.advEdit&&!d.basic&&!(adv.coll[d.id]>0)) return false;
     const f=frameOf(d);
-    if(db.colors.size&&!db.colors.has(f)) return false;
+    if(db.colors.size&&!(f==='M'?colorsOfD(d).some(k=>db.colors.has(k)):db.colors.has(f))) return false;
     if(db.type==='creature'&&!isCreatureD(d)) return false;
     if(db.type==='spell'&&(isCreatureD(d)||/Land/.test(d.type))) return false;
     if(db.type==='land'&&!/Land/.test(d.type)) return false;
@@ -4854,5 +5080,5 @@ function handleAct(a){
 
 { const _cs=castSpell, _dd=dealDamage; castSpell=function(...a){ const r=_cs.apply(this,a); if(r) sfx('cast'); return r; }; dealDamage=function(...a){ sfx('hit'); return _dd.apply(this,a); }; }
 if(!HEADLESS) init();
-else globalThis.__engine={cardValue,advStarter,advAutoDeck,WIZ,setG:v=>{g=v;},netView,netSerialize,netBuildGuest,NET,canHumanAct,castableNow,abilityUsable,artHTML,newGame,DB,STARTERS,OPPONENTS,expand,getG:()=>g,ui,genMap,anteResult,MW,MH,T,BLOCK};
+else globalThis.__engine={mkCard,combat,moveTo,sacrifice,upkeepMay,ctrl,pow,tough,canAttack,canBlock,hasKw,legal,TG,drawCards,dealDamage,costOf,destroy,isLand,isCreature,sba,cardValue,advStarter,advAutoDeck,WIZ,setG:v=>{g=v;},netView,netSerialize,netBuildGuest,NET,canHumanAct,castableNow,abilityUsable,artHTML,newGame,DB,STARTERS,OPPONENTS,expand,getG:()=>g,ui,genMap,anteResult,MW,MH,T,BLOCK};
 </script>
