@@ -1,0 +1,3 @@
+{"name":"shandalar-duels-tests","private":true,"version":"0.0.0","license":"GPL-3.0",
+ "scripts":{"test":"node tests/run.js","test:engine":"node tests/run.js --engine","test:ui":"node tests/run.js --ui","test:fast":"node tests/run.js --fast"},
+ "devDependencies":{"playwright":"^1.48.0"}}

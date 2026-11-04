@@ -1,0 +1,47 @@
+const fs=require('fs');
+const src=fs.readFileSync(process.env.GAME||require('path').join(__dirname,'..','..','web','index.html'),'utf8');
+new Function(src.slice(src.lastIndexOf('<script>')+8,src.lastIndexOf('</script>')))();
+const E=globalThis.__engine; const G=()=>E.getG();
+(async()=>{
+  const o={}; const T=async(name,fn)=>{ try{ o[name]=await fn(); }catch(e){ o[name]='ERR '+String(e.stack).split('\n').slice(0,3).join(' | ').slice(0,260); } };
+  const dk={plains:10,island:10,swamp:10,mountain:10,forest:10,grizzly_bears:10};
+  await E.newGame(E.expand(dk),E.expand(dk),['A','B'],true);
+  const g=G(); let SIDN=9000;
+  const reset=()=>{ g.bf.length=0; for(const P of g.players){ P.graveyard=[]; P.hand=[]; P.exile=[]; P.life=20; P.decked=false; P.pool={W:9,U:9,B:9,R:9,G:9,C:9}; P.rpool=null; P.actTurn=0; P.northStar=0; } g.stack=[]; g.over=false; g.dmgFx=[]; g.sorcLog=[]; g.glyphDoom=[]; g.step='main1'; g.active=0; g.camo=0; g.fog=false; };
+  const mk=(id,pid=0)=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); E.moveTo(c,'bf'); c.controller=pid; c.sick=false; return c; };
+  const inHand=(id,pid=0)=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); c.zone='hand'; g.players[pid].hand.push(c); return c; };
+  const inGy=(id,pid=0)=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); c.zone='graveyard'; g.players[pid].graveyard.push(c); return c; };
+  const ref=c=>({kind:'card',iid:c.iid}); const pl=p=>({kind:'player',pid:p});
+  const cast=async(c,targets=[],x=0,pid=0,extra={})=>{ const P=g.players[c.owner]; P.hand=P.hand.filter(k=>k!==c); c.zone='stack'; g.stack.push(Object.assign({sid:SIDN++,kind:'spell',card:c,ctrl:pid,targets,x,sacCmc:0,name:c.d.name},extra)); await E.resolveTop(); };
+  const act=async(c,i,targets=[],x=0,pid=0)=>{ const ok=E.activate(pid,c,c.d.abilities[i],targets,x); let n=0; while(g.stack.length&&n++<5) await E.resolveTop(); return ok; };
+  const L=id=>g.players[0].life;
+
+
+  const castFull=async(c,targets=[],x=0,pid=0)=>{ g.players[pid].pool={W:9,U:9,B:9,R:9,G:9,C:9}; const ok=E.castSpell(pid,c,targets,x); let n=0; while(g.stack.length&&n++<8) await E.resolveTop(); return ok; };
+  await T('mask',async()=>{ reset(); const m=mk('illusionary_mask',0); const k=inHand('craw_wurm',0); g.lastPaid={G:3,C:0}; const bad=E.activate(0,m,m.d.abilities[0],[],6); while(g.stack.length) await E.resolveTop(); g.lastPaid={}; return [bad,k.zone,k.faceDown,k.faceDown&&[E.pow(k),E.tough(k),k.d.name]]; });
+  await T('maskreveal',async()=>{ reset(); const k=inHand('craw_wurm',0); k.realD=k.d; k.faceDown=true; k.d=Object.assign({},E.DB.grizzly_bears,{name:'Face-down creature'}); E.moveTo(k,'bf'); k.faceDown=true; k.sick=false; const v=mk('grizzly_bears',1); E.dealDamage(v,k,1); return [k.faceDown,k.d.name]; });
+  await T('spuzzem',async()=>{ reset(); const f=mk('floral_spuzzem',0); f.attacking=true; const r=mk('sol_ring',1); await f.d.onUnblocked(f); return [r.zone,f.spuzT===g.turn]; });
+  await T('slug',async()=>{ reset(); g.players[0].pool={W:0,U:0,B:0,R:0,G:0,C:9}; const s=mk('giant_slug',0); mk('island',1); mk('island',1); const ok=E.activate(0,s,s.d.abilities[0],[]); await E.resolveTop(); await s.d.upkeep({src:s,pid:0}); return [ok,s.temp.kw.slice()]; });
+  await T('polka',async()=>{ reset(); const p=mk('goblin_polka_band',0); mk('grizzly_bears',1); mk('goblin_digging_team',1); const ok=E.activate(0,p,p.d.abilities[0],[],2); await E.resolveTop(); return [ok,g.bf.filter(k=>k.tapped).map(k=>k.d.name).join(),g.bf.map(k=>k.skipUntap||0).join()]; });
+  await T('halfdane',async()=>{ reset(); const h=mk('halfdane',0); const c=mk('craw_wurm',1); await h.d.upkeep({src:h,pid:0}); return [E.pow(h),E.tough(h)]; });
+  await T('johan',async()=>{ reset(); const j=mk('johan',0); mk('grizzly_bears',0); mk('grizzly_bears',0); await j.d.beginCombat(j,0); return [j.cantAttackTurn===g.turn,j.johanT===g.turn]; });
+  await T('werewolf',async()=>{ reset(); g.step='block'; const w=mk('lesser_werewolf',0); const b=mk('grizzly_bears',1); w.attacking=true; b.blocking=w.iid; w.blockedBy=[b.iid]; const ok=E.activate(0,w,w.d.abilities[0],[ref(b)]); await E.resolveTop(); return [ok,E.pow(w),b.tcnt,E.tough(b)]; });
+  await T('nebu',async()=>{ reset(); const n=mk('nebuchadnezzar',0); const h1=inHand('forest',1),h2=inHand('forest',1),h3=inHand('grizzly_bears',1); const ok=E.activate(0,n,n.d.abilities[0],[pl(1)],5); await E.resolveTop(); return [ok,g.players[1].hand.length,g.players[1].graveyard.length]; });
+  await T('petra',async()=>{ reset(); const p=mk('petra_sphinx',0); const ok=E.activate(0,p,p.d.abilities[0],[pl(0)]); await E.resolveTop(); return [ok,g.players[0].graveyard.length+g.players[0].hand.length]; });
+  await T('rubinia',async()=>{ reset(); const r=mk('rubinia_soulsinger',0); const v=mk('craw_wurm',1); const ok=E.activate(0,r,r.d.abilities[0],[ref(v)]); await E.resolveTop(); const c1=v.controller; await r.d.upkeep({src:r,pid:0}); return [ok,c1,r.tapped]; });
+  await T('satyr',async()=>{ reset(); const r=mk('willow_satyr',0); const v=mk('dakkon_blackblade',1); const ok=E.activate(0,r,r.d.abilities[0],[ref(v)]); await E.resolveTop(); return [ok,v.controller]; });
+  await T('scarwood',async()=>{ reset(); g.players[1].pool={W:0,U:0,B:0,R:0,G:0,C:0}; g.players[1].hand=[]; const sb=mk('scarwood_bandits',0); const r=mk('sol_ring',1); mk('forest',1).tapped=true; const ok=E.activate(0,sb,sb.d.abilities[0],[ref(r)]); await E.resolveTop(); const c1=r.controller; E.moveTo(sb,'graveyard'); E.sba(); return [ok,c1,r.controller]; });
+  await T('sentinel',async()=>{ reset(); g.step='block'; const s=mk('sentinel',0); const b=mk('craw_wurm',1); s.blocking=b.iid; b.blockedBy=[s.iid]; const ok=E.activate(0,s,s.d.abilities[0],[ref(b)]); await E.resolveTop(); return [ok,E.tough(s)]; });
+  await T('brownie',async()=>{ reset(); const s=mk('shelkin_brownie',0); const t=mk('rukh_egg'==='x'?'x':'grizzly_bears',1); const ok=E.activate(0,s,s.d.abilities[0],[ref(t)]); await E.resolveTop(); return [ok,t.noBandsT===g.turn]; });
+  await T('shimian',async()=>{ reset(); g.turn=60; const s=mk('shimian_night_stalker',0); const a=mk('craw_wurm',1); a.attacking=true; const ok=E.activate(0,s,s.d.abilities[0],[ref(a)]); await E.resolveTop(); E.dealDamage(a,pl(0),6,true); return [ok,g.players[0].life,s.damage]; });
+  await T('wretched',async()=>{ reset(); const w=mk('the_wretched',0); const b=mk('grizzly_bears',1); w.attacking=true; b.blocking=w.iid; w.blockedBy=[b.iid]; w.d.eoc(w); E.sba(); const c1=b.controller; E.moveTo(w,'graveyard'); E.sba(); return [c1,b.controller]; });
+  await T('caltrops',async()=>{ reset(); const a=mk('wall_of_caltrops',0), b=mk('wall_of_stone',0); return [E.hasKw(a,'banding'),E.hasKw(b,'banding')]; });
+  await T('rainbow',async()=>{ reset(); const r=mk('rainbow_knights',0); r.d.etb({src:r,ctrl:0}); const ok=E.activate(0,r,r.d.abilities[1],[]); await E.resolveTop(); return [r.permKw,ok,E.pow(r)]; });
+  await T('ooze',async()=>{ reset(); const p=mk('primordial_ooze',0); return [p.d.mustAttack]; });
+  await T('quarum',async()=>{ reset(); const q=mk('quarum_trench_gnomes',0); const l=mk('plains',0); E.activate(0,q,q.d.abilities[0],[ref(l)]); await E.resolveTop(); return E.manaSources(0).filter(s=>s.c===l).map(s=>s.prod); });
+  await T('aisling',async()=>{ reset(); const w=mk('aisling_leprechaun',0); const b=mk('grizzly_bears',1); w.d.onBlocked(w,b); return b.colOv; });
+  await T('clergy',async()=>{ reset(); const c=mk('clergy_of_the_holy_nimbus',0); E.destroy(c); const a=c.zone; c.noRegenT=g.turn; E.destroy(c); return [a,c.zone]; });
+  await T('gabriel',async()=>{ reset(); const c=mk('gabriel_angelfire',0); await c.d.upkeep({src:c,pid:0}); return [c.gabKw,E.hasKw(c,c.gabKw==='rampage3'?'rampage3':c.gabKw)]; });
+  await T('frank',async()=>{ reset(); for(let i=0;i<3;i++) inGy('grizzly_bears',0); const f=inHand('frankensteins_monster',0); await castFull(f,[],2); return [f.zone,E.pow(f),E.tough(f),g.players[0].exile.length]; });
+  console.log(JSON.stringify(o));
+})();

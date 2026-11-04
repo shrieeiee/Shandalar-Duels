@@ -1,0 +1,48 @@
+const fs=require('fs');
+const src=fs.readFileSync(process.env.GAME||require('path').join(__dirname,'..','..','web','index.html'),'utf8');
+new Function(src.slice(src.lastIndexOf('<script>')+8,src.lastIndexOf('</script>')))();
+const E=globalThis.__engine; const G=()=>E.getG();
+(async()=>{
+  const o={}; const T=async(name,fn)=>{ try{ o[name]=await fn(); }catch(e){ o[name]='ERR '+String(e.stack).split('\n').slice(0,3).join(' | ').slice(0,260); } };
+  const dk={plains:10,island:10,swamp:10,mountain:10,forest:10,grizzly_bears:10};
+  await E.newGame(E.expand(dk),E.expand(dk),['A','B'],true);
+  const g=G(); let SIDN=9000;
+  const reset=()=>{ g.bf.length=0; for(const P of g.players){ P.graveyard=[]; P.hand=[]; P.exile=[]; P.life=20; P.decked=false; P.pool={W:9,U:9,B:9,R:9,G:9,C:9}; P.rpool=null; P.actTurn=0; P.northStar=0; } g.stack=[]; g.over=false; g.dmgFx=[]; g.sorcLog=[]; g.glyphDoom=[]; g.step='main1'; g.active=0; g.camo=0; g.fog=false; };
+  const mk=(id,pid=0)=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); E.moveTo(c,'bf'); c.controller=pid; c.sick=false; return c; };
+  const inHand=(id,pid=0)=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); c.zone='hand'; g.players[pid].hand.push(c); return c; };
+  const inGy=(id,pid=0)=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); c.zone='graveyard'; g.players[pid].graveyard.push(c); return c; };
+  const ref=c=>({kind:'card',iid:c.iid}); const pl=p=>({kind:'player',pid:p});
+  const cast=async(c,targets=[],x=0,pid=0,extra={})=>{ const P=g.players[c.owner]; P.hand=P.hand.filter(k=>k!==c); c.zone='stack'; g.stack.push(Object.assign({sid:SIDN++,kind:'spell',card:c,ctrl:pid,targets,x,sacCmc:0,name:c.d.name},extra)); await E.resolveTop(); };
+  const act=async(c,i,targets=[],x=0,pid=0)=>{ const ok=E.activate(pid,c,c.d.abilities[i],targets,x); let n=0; while(g.stack.length&&n++<5) await E.resolveTop(); return ok; };
+  const L=id=>g.players[0].life;
+  await T('arena',()=>{ reset(); const l=mk('dakkon_blackblade',0); const a=mk('arena_of_the_ancients',0); a.d.etb({src:a,ctrl:0}); return [l.tapped]; });
+  await T('prism',async()=>{ reset(); g.players[0].pool={W:0,U:0,B:0,R:0,G:0,C:2}; const c=mk('celestial_prism',0); const ok=await act(c,0,[{kind:'color',c:'U'}]); return [ok,g.players[0].pool.U,c.tapped]; });
+  await T('stones',async()=>{ reset(); g.players[0].pool={W:0,U:0,B:0,R:0,G:0,C:1}; const c=mk('standing_stones',0); const ok=await act(c,0,[{kind:'color',c:'R'}]); return [ok,g.players[0].pool.R,g.players[0].life]; });
+  await T('northstar',async()=>{ reset(); const c=mk('north_star',0); await act(c,0); return g.players[0].northStar===g.turn; });
+  await T('darksphere',async()=>{ reset(); const a=mk('grizzly_bears',1); const s=mk('dark_sphere',0); await act(s,0); E.dealDamage(a,pl(0),4); E.dealDamage(a,pl(0),4); return [g.players[0].life,s.zone]; });
+  await T('pentacle',async()=>{ reset(); const a=mk('grizzly_bears',1); const v=mk('grizzly_bears',1); const s=mk('nova_pentacle',0); await act(s,0); E.dealDamage(a,pl(0),2); return [g.players[0].life,a.damage+v.damage]; });
+  await T('sword',async()=>{ reset(); const s=mk('sword_of_the_ages',0); s.tapped=false; const c1=mk('grizzly_bears',0), c2=mk('grizzly_bears',0); const ok=await act(s,0,[{kind:'sac',iid:c1.iid},{kind:'sac',iid:c2.iid},pl(1)]); return [ok,g.players[1].life,s.zone,c1.zone,c2.zone]; });
+  await T('egg',async()=>{ reset(); const e=mk('triassic_egg',0); const dead=inGy('grizzly_bears',0); await act(e,0); e.tapped=false; await act(e,0); e.tapped=false; const n=e.cn.hatchling; await act(e,1); return [n,e.zone,dead.zone]; });
+  await T('voodoo',async()=>{ reset(); const d=mk('voodoo_doll',0); d.d.upkeep({src:d,pid:0}); d.d.upkeep({src:d,pid:0}); const n=d.cn.pin; await act(d,0,[pl(1)]); const l1=g.players[1].life; d.tapped=false; d.d.endStep(d,0); return [n,l1,g.players[0].life,d.zone]; });
+  await T('vault',async()=>{ reset(); const v=mk('knowledge_vault',0); const P=g.players[0]; const lib0=P.library.length; await act(v,0); v.tapped=false; await act(v,0); const ex=v.vault.length; inHand('forest',0); await act(v,1); return [ex,P.library.length,P.hand.length,v.zone,P.hand.map(k=>k.zone).join()]; });
+  await T('matrix',async()=>{ reset(); g.step='upkeep'; const m=mk('life_matrix',0); const b=mk('grizzly_bears',0); await act(m,0,[ref(b)]); E.destroy(b); return [b.zone,b.cn.matrix,b.tapped]; });
+  await T('wand',async()=>{ reset(); const w=mk('wand_of_ith',0); inHand('forest',1); await act(w,0,[pl(1)]); return [g.players[1].hand.length,g.players[1].life,g.players[1].graveyard.length]; });
+  await T('gauntlets',async()=>{ reset(); const g1=mk('gauntlets_of_chaos',0); const a=mk('grizzly_bears',0), b=mk('grizzly_bears',1); const ok=await act(g1,0,[ref(a),ref(b)]); return [ok,a.controller,b.controller]; });
+  await T('runesword',async()=>{ reset(); g.turn=21; const r=mk('runesword',0); const a=mk('grizzly_bears',0); a.attacking=true; const v=mk('grizzly_bears',1); await act(r,0,[ref(a)]); E.dealDamage(a,v,2); E.sba(); const vz=v.zone; E.moveTo(a,'graveyard'); return [vz,r.zone]; });
+  await T('city',async()=>{ reset(); const m=inHand('aladdins_ring',0); const l=mk('aladdins_lamp',0); const f=inHand('forest',0); const ok0=E.timingOK(0,m); const c=mk('city_in_a_bottle',0); c.d.etb({src:c,ctrl:0}); return [l.zone,ok0,E.timingOK(0,m),E.timingOK(0,f)]; });
+  await T('sylex',async()=>{ reset(); const a=mk('triskelion',0); const s=mk('golgothian_sylex',0); await act(s,0); return [a.zone,s.zone]; });
+  await T('cityofshadows',async()=>{ reset(); const c=mk('city_of_shadows',0); const k=mk('grizzly_bears',0); await act(c,0,[{kind:'sac',iid:k.iid}]); c.tapped=false; return [k.zone,c.cn&&c.cn.storage,E.manaSources(0).filter(s=>s.c===c).map(s=>s.prod)]; });
+  await T('gem',async()=>{ reset(); const c=mk('gem_bazaar',0); c.d.etb({src:c,ctrl:0}); const col=c.gemCol; const s=E.manaSources(0).filter(s=>s.c===c).map(s=>s.prod); return [col,s]; });
+  await T('haven',async()=>{ reset(); const h=mk('safe_haven',0); const k=mk('grizzly_bears',0); await act(h,0,[ref(k)]); const z=k.zone; await h.d.upkeep({src:h,pid:0}); return [z,k.zone,h.zone]; });
+  await T('banding',async()=>{ reset(); const l=mk('mountain_stronghold',0); const d=mk('gabriel_angelfire',0); const r=mk('rubinia_soulsinger',0); const z=mk('stangg',0); return [E.bandsLeg(z),E.bandsLeg(r),E.bandsLeg(d)]; });
+  await T('sorrow',async()=>{ reset(); g.step='block'; const sp=mk('sorrows_path',0); const a1=mk('earth_elemental',0), a2=mk('earth_elemental',0); a1.attacking=a2.attacking=true; const b1={damage:0}; a1.blockedBy=[]; a2.blockedBy=[]; g.active=0; /* opponent is attacker; we block */
+    const bb1=mk('grizzly_bears',1), bb2=mk('grizzly_bears',1); bb1.blocking=a1.iid; a1.blockedBy.push(bb1.iid); bb2.blocking=a2.iid; a2.blockedBy.push(bb2.iid); bb1.tapped=bb2.tapped=false; /* blockers controlled by player1 (opponent of ctrl0) */
+    const ok=await act(sp,0,[ref(bb1),ref(bb2)]); return [ok,bb1.blocking===a2.iid,bb2.blocking===a1.iid,g.players[0].life,b1.damage]; });
+  await T('glyphs',async()=>{ reset(); g.step='block'; g.turn=30; const w=mk('wall_of_stone',0); const a=mk('grizzly_bears',1); a.attacking=true; w.blocking=a.iid; a.blockedBy=[w.iid]; w.blkHist=[{iid:a.iid,turn:30,ctl:1}];
+    const d=inHand('glyph_of_delusion',0); await cast(d,[ref(w),ref(a)]); const gl=a.glyph;
+    const w2=mk('wall_of_stone',0); w2.blocking=a.iid; const gd=inHand('glyph_of_destruction',0); await cast(gd,[ref(w2)]); E.dealDamage(a,w2,5); const dm=w2.damage; const pw=E.pow(w2);
+    const dm2=inHand('glyph_of_doom',0); await cast(dm2,[ref(w)]); const doom=g.glyphDoom.length;
+    const lf=inHand('glyph_of_life',0); await cast(lf,[ref(w)]); const l0=g.players[0].life; E.dealDamage(a,w,2,true); return [gl,dm,pw,doom,g.players[0].life-l0]; });
+  console.log(JSON.stringify(o));
+  globalThis.__rest=async()=>{};
+})();

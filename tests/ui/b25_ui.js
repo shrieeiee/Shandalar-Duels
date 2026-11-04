@@ -1,0 +1,20 @@
+const {chromium}=require('playwright');
+(async()=>{
+  const b=await chromium.launch(); const p=await b.newPage({viewport:{width:1280,height:900}});
+  const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.goto('file://'+(process.env.GAME||require('path').join(__dirname,'..','..','web','index.html'))); await p.evaluate(()=>{ setView('deck'); ui.speed=0.02; db.ante=true; });
+  await p.waitForTimeout(300); await p.click('#startDuel'); await p.waitForTimeout(500);
+  const keep=await p.$('[data-act="keep"]'); if(keep) await keep.click();
+  await p.waitForFunction(()=>ui.wait&&ui.wait.kind==='priority'&&g.active===0&&g.step==='main1',null,{timeout:60000});
+  const out=await p.evaluate(async()=>{ const o={}; o.start=g.ante.length;
+    DB.demonic_attorney.resolve({ctrl:0}); o.att=g.ante.length;
+    const h=g.players[0].hand.length; DB.contract_from_below.resolve({ctrl:0}); o.contract=[g.ante.length,g.players[0].hand.length,h];
+    const life=g.players[1].life; g.players[1].life=12; const rp=DB.rebirth.resolve({ctrl:0}); await new Promise(r=>setTimeout(r,200)); document.querySelector('[data-ask="y"]').click(); await rp; o.rebirth=[g.players[1].life,g.ante.length];
+    const mk=id=>{ const c=mkCard(id,0); g.cards.set(c.iid,c); c.zone='bf'; c.controller=0; g.bf.push(c); c.sick=false; return c; };
+    const jb=mk('jeweled_bird'); const mine=g.ante.filter(c=>c.owner===0).length; DB.jeweled_bird.abilities[0].resolve({src:jb,ctrl:0}); o.bird=[mine,g.ante.filter(c=>c.owner===0).length,jb.zone];
+    const ef=mk('tempest_efreet'); g.players[1].life=20; const oh=g.players[1].hand.length; moveTo(ef,'graveyard'); await DB.tempest_efreet.abilities[0].resolve({src:ef,ctrl:0}); o.efreet=[oh,g.players[1].hand.length,ef.owner,ef.zone];
+    const bt=mk('bronze_tablet'); const tg=mkCard('grizzly_bears',1); g.cards.set(tg.iid,tg); tg.zone='bf'; tg.controller=1; g.bf.push(tg); g.players[1].life=20; await DB.bronze_tablet.abilities[0].resolve({src:bt,ctrl:0,targets:[{kind:'card',iid:tg.iid}]}); o.tablet=[bt.owner,tg.owner,tg.zone,g.players[1].life];
+    return o; });
+  console.log(JSON.stringify(out));
+  console.log('errors',errs); await b.close();
+})().catch(e=>{console.log('FAIL',e.message.split('\n')[0]); process.exit(1)});

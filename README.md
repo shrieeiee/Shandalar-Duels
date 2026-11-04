@@ -19,3 +19,7 @@ The game has its own built-in artwork. In the Windows/Linux/SteamOS builds, open
 The code is released under the **GNU General Public License v3.0** (see `LICENSE`). Copyright (C) 2026 shrieeiee.
 
 This is an unofficial, non-commercial fan project, not affiliated with or endorsed by Wizards of the Coast or MicroProse. *Magic: The Gathering*, its card names and rules text are the property of Wizards of the Coast. The card artwork in the game is procedurally generated and original. The GPL covers the code only, not any Wizards of the Coast intellectual property.
+
+## Tests
+
+`npm install` then `npm test` runs the engine tests (Node only: AI-vs-AI simulations, card behaviour checks, AI regression assertions) and, if Playwright is installed, the UI tests. `npm run test:fast` shortens the simulations; `npm run test:engine` skips the UI tests (UI tests need `npx playwright install chromium`). Set `GAME=/path/to/index.html` to test another build. CI runs them on every push.

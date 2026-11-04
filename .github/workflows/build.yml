@@ -1,7 +1,17 @@
 name: Build all platforms
 permissions: { contents: write }
-on: { workflow_dispatch: { inputs: { tag: { description: 'Release tag to attach the builds to (optional)', required: false } } }, push: { branches: [main], paths: ['web/**','electron/**','android/**','.github/**'] }, release: { types: [published] } }
+on: { workflow_dispatch: { inputs: { tag: { description: 'Release tag to attach the builds to (optional)', required: false } } }, push: { branches: [main], paths: ['web/**','electron/**','android/**','tests/**','package.json','.github/**'] }, release: { types: [published] } }
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Engine + UI tests (fast sims)
+        run: node tests/run.js --fast
   desktop:
     runs-on: ubuntu-latest
     steps:
