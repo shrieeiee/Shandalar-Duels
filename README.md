@@ -9,3 +9,9 @@ Classic-rules Magic duels with a Shandalar-style adventure mode, deck builder, p
 
 Steam Deck: unzip the Linux build, add `shandalar.sh` as a Non-Steam Game, use the Keyboard (WASD) + Mouse Steam Input template.
 Friend duels: one-code rooms only work on the claude.ai-hosted version; elsewhere use *Manual codes*.
+
+## Licence and disclaimer
+
+The code is released under the **GNU General Public License v3.0** (see `LICENSE`). Copyright (C) 2026 shrieeiee.
+
+This is an unofficial, non-commercial fan project, not affiliated with or endorsed by Wizards of the Coast or MicroProse. *Magic: The Gathering*, its card names and rules text are the property of Wizards of the Coast. The card artwork in the game is procedurally generated and original. The GPL covers the code only, not any Wizards of the Coast intellectual property.
