@@ -321,6 +321,112 @@ body.cb .p-W,body.cb .p-U{font-weight:900}
 .intart.sm{max-height:110px;object-fit:cover;margin-bottom:8px}
 .intcap{position:absolute;left:0;right:0;bottom:0;padding:26px 14px 10px;border-radius:0 0 14px 14px;background:linear-gradient(0deg,rgba(6,4,16,.85),transparent);display:flex;flex-direction:column;gap:2px}
 .intcap b{font:700 18px var(--head);color:var(--acc)}.intcap span{font:500 12.5px var(--ui);color:#d8deec}
+/* ===== v37 duel readability redesign ===== */
+:root{--bw:108px;--bh:150px;--hw:118px;--hh:170px}
+/* mana symbols: big, ringed, high contrast */
+#duelView .pip,#modal .pip{width:22px;height:22px;font:800 13px/1 var(--head);vertical-align:middle;text-shadow:0 1px 1px rgba(0,0,0,.35)}
+body:not(.cb) #duelView .pip,body:not(.cb) #modal .pip{box-shadow:0 0 0 1.5px rgba(10,12,16,.7),inset 0 -2px 3px rgba(0,0,0,.28),inset 0 1px 2px rgba(255,255,255,.4)}
+#duelView .p-W,#modal .p-W{background:#fbf3cf;color:#4a3d12;text-shadow:none}
+#duelView .p-N,#modal .p-N{background:#d5cfc4;color:#15110d;text-shadow:none;font-size:14px}
+#duelView .p-B,#modal .p-B{background:#3a2f35;color:#fff;box-shadow:0 0 0 1.5px #c9bfc4}
+#duelView .p-T,#modal .p-T{background:#5d544b;font-size:14px}
+body.cb #duelView .pip,body.cb #modal .pip{font-size:13px}
+#duelView .cost,#modal .cost{gap:3px}
+#duelView .tx .pip,#modal .tx .pip{width:17px;height:17px;font-size:11px;vertical-align:-3px;margin:0 1px}
+#duelView .hd,#modal .hc .hd{padding:4px 5px 3px}
+#duelView .big .pip{width:26px;height:26px;font-size:15px}
+#duelView .big .cost{gap:4px}
+#duelView .pool .pip{width:24px;height:24px}
+#duelView .sitem .pip{width:18px;height:18px;font-size:11px}
+/* hand cards: name on top, cost on its own line */
+.hc .hd,.hc.card .hd{flex-wrap:wrap}
+.hc .nm{flex:1 1 100%;font-size:13px}
+.hc .cost{flex:1 1 100%;justify-content:flex-end;min-height:0}
+.hc .cost:empty{display:none}
+.hc .tx{font-size:10.5px}
+.hc .ty{font-size:10px}
+/* battlefield cards */
+.bc{width:var(--bw);height:var(--bh)}
+.bc .art{display:none}
+.bc .artw{position:relative;flex:1 1 auto;min-height:0;display:flex;border-bottom:1px solid color-mix(in srgb,var(--fe) 45%,var(--fb))}
+.bc .artw .art{display:block;flex:1;border:0;min-height:0;flex-basis:auto}
+.bc .nm{font-size:13px;line-height:1.08;-webkit-line-clamp:2}
+.bc .ty{font-size:9.5px;font-weight:700;display:block}
+.bc .kws{display:flex;flex-wrap:wrap;gap:2px;padding:2px 3px 3px}
+.bc .kw{font:800 9px/1 var(--ui);padding:2px 4px;border-radius:999px;background:color-mix(in srgb,var(--fe) 75%,#000);color:#fff;white-space:nowrap}
+.bc .pt{right:0;bottom:0;border-radius:10px 0 0 0;border-width:0;border-top:2px solid var(--fe);border-left:2px solid var(--fe);font:800 22px/1 var(--head);padding:3px 8px 3px 9px;background:#14100c;color:#fff;letter-spacing:-.02em}
+.bc .pt i{font-style:normal;opacity:.55;margin:0 1px;font-weight:600}
+.bc .pt .up{color:#7fe08a}.bc .pt .dn{color:#ff8c7a}
+.bc .badges{left:3px;bottom:30px;z-index:2}
+.bc .badge{font:800 10px/1 var(--ui);padding:3px 5px;border-radius:6px}
+.bc .fls{position:absolute;left:0;top:0;right:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:3px}
+.fl{font:800 9.5px/1 var(--ui);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:5px;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.fl.fa{background:#c8341c}.fl.fb{background:#2f78cf}.fl.ft{background:#3d3a37}.fl.fs{background:#6b6258}
+/* state: tapped = upright but dimmed + tilted + labelled (never rotated text) */
+.slot.tap{width:var(--bw)}
+.slot.tap .bc,.slot.tap .card{transform:rotate(5deg);margin-block:0}
+.bc.tapped{filter:grayscale(.55) brightness(.72);opacity:.95}
+.bc.tapped::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(0,0,0,.14) 0 6px,transparent 6px 12px);pointer-events:none}
+.slot{width:var(--bw);gap:4px}
+.slot.atk-me{transform:translateY(-14px)}
+.slot.atk-opp{transform:translateY(14px)}
+.bc.atk{box-shadow:0 0 0 4px #e0452a,0 0 18px #e0452a}
+.bc.blk{box-shadow:0 0 0 4px #5da2f0,0 0 16px #5da2f0}
+.bc.sel{box-shadow:0 0 0 4px var(--glow),0 0 16px var(--glow)}
+.bc.valid{box-shadow:0 0 0 4px var(--glow),0 0 20px var(--glow)}
+.bc:hover{transform:translateY(-3px);z-index:2}
+.slot.tap .bc:hover{transform:rotate(5deg) translateY(-3px)}
+.chip{font:700 11px/1.2 var(--ui);padding:3px 6px}
+.blocknote{font:700 11px/1.15 var(--ui);max-width:var(--bw);color:#9cc6f2}
+/* sides */
+.side{display:flex;flex-direction:column;gap:12px;padding:10px 10px 12px;border-radius:18px;position:relative}
+.side.opp{background:linear-gradient(180deg,rgba(208,86,59,.12),rgba(208,86,59,.03));box-shadow:inset 0 0 0 1px rgba(208,86,59,.28),inset 4px 0 0 rgba(208,86,59,.7)}
+.side.me{background:linear-gradient(0deg,rgba(93,162,240,.12),rgba(93,162,240,.03));box-shadow:inset 0 0 0 1px rgba(93,162,240,.3),inset 4px 0 0 rgba(93,162,240,.75)}
+.side .row{position:relative;overflow:visible;flex-wrap:wrap;gap:10px;padding:30px 10px 10px;min-height:calc(var(--bh) + 36px);background:rgba(6,10,15,.38);border:1px solid rgba(255,255,255,.09);align-items:flex-end}
+.side .row.opp{align-items:flex-start}
+.side .row.lands{min-height:0;padding:20px 10px 10px;align-items:center;gap:8px}
+.side .row.others{min-height:0;--bw:88px;--bh:116px;background:rgba(6,10,15,.3)}
+.side .row[data-zone]::before{content:attr(data-zone);position:absolute;left:12px;top:-1px;transform:translateY(-50%);font:800 10px/1 var(--ui);letter-spacing:.14em;text-transform:uppercase;padding:4px 9px;border-radius:999px;background:#10181f;border:1px solid rgba(255,255,255,.16);color:#a9b7c2}
+.side.opp .row.creatures::before{color:#f2a08e}.side.me .row.creatures::before{color:#9cc6f2}
+.row.dens1{--bw:92px;--bh:128px}
+.row.dens2{--bw:78px;--bh:108px}
+.row.dens1 .nm,.row.dens2 .nm{font-size:11.5px}
+.row.dens2 .kws{display:none}
+.row.dens2 .pt{font-size:18px}
+.side .row .empty{font-size:13px;color:#7b8a96}
+/* lands */
+.landg{gap:8px;padding:6px 10px 6px 6px;border-width:2px;font:700 13px/1 var(--ui);min-height:38px}
+.landg .lp{display:flex;gap:2px}
+.landg .ln{white-space:nowrap}
+.landg .lc{font:600 12px/1 var(--ui);opacity:.8}
+.landg .lc b{font-size:16px;font-weight:800;opacity:1}
+.landg .dot{width:9px;height:16px}
+.landg.dim{opacity:.6}
+/* player bars */
+.who{padding:6px 16px 6px 8px}
+.life{font-size:38px;min-width:54px}
+.pname{font-size:15px}
+.zinfo{font:600 13px/1 var(--ui)}
+.zbtn{font-size:13px;padding:5px 10px}
+.mid{padding:10px 14px}
+.prompt{font-size:15px}
+.ph{font-size:10.5px;padding:6px 8px}
+@media (max-width:560px){
+  :root{--bw:84px;--bh:118px;--hw:96px;--hh:138px}
+  .bc .ty{display:block;font-size:8.5px}
+  .bc .nm{font-size:11px}
+  .bc .pt{font-size:18px;padding:2px 6px}
+  .bc .kw{font-size:8px;padding:2px 3px}
+  .row.dens1{--bw:74px;--bh:104px}.row.dens2{--bw:66px;--bh:94px}
+  .side .row.others{--bw:74px;--bh:104px}
+  .side{padding:8px 6px 10px;border-radius:14px}
+  .side .row{gap:8px;padding:28px 6px 8px}
+  .bc .badges{bottom:24px}
+  .life{font-size:30px;min-width:40px}
+  .landg{padding:5px 8px 5px 5px}
+  #duelView .pip{width:20px;height:20px;font-size:12px}
+  .hc .nm{font-size:12px}
+}
 </style>
 
 <div id="app">
@@ -2580,7 +2686,8 @@ function newGame(list0,list1,names,bothAI){
    ===================================================================== */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-function pipHTML(t){ if(t==='T') return '<span class="pip p-T" title="Tap">⤵</span>'; if(/\d|X/.test(t)) return `<span class="pip p-N">${t}</span>`; return `<span class="pip p-${t}">${t}</span>`; }
+const PIPNAME={W:'White mana',U:'Blue mana',B:'Black mana',R:'Red mana',G:'Green mana',X:'X (any amount)'};
+function pipHTML(t){ if(t==='T') return '<span class="pip p-T" title="Tap this card" aria-label="tap">⤵</span>'; if(/^\d+$/.test(t)) return `<span class="pip p-N" title="${t} generic mana" aria-label="${t} generic">${t}</span>`; if(t==='X') return '<span class="pip p-N" title="X: any amount of mana" aria-label="X">X</span>'; return `<span class="pip p-${t}" title="${PIPNAME[t]||t}" aria-label="${PIPNAME[t]||t}">${t}</span>`; }
 function costHTML(s){ if(s===''||s==null) return ''; return ((s.match(/\d+|[WUBRGX]/g))||[]).map(pipHTML).join(''); }
 function textHTML(t){ return esc(t).replace(/\{(\w)\}/g,(m,k)=>pipHTML(k==='C'?'1':k)); }
 function frameOf(d){ if(/Land/.test(d.type)) return 'L'; const cs=colorsOfD(d); if(cs.length===1) return cs[0]; if(/Artifact/.test(d.type)) return 'A'; return cs[0]||'A'; }
@@ -2669,43 +2776,74 @@ function cardFace(d,extra,cls,attrs,c){
 }
 function targetRefFor(c){ return {kind:'card',iid:c.iid}; }
 function isValidTarget(ref){ return ui.targeting&&legal(ui.targeting.spec,ref,ui.targeting.src); }
+const KWSHOW=[['flying','Flying'],['firstStrike','First strike'],['trample','Trample'],['haste','Haste'],['vigilance','Vigilance'],['reach','Reach'],['banding','Banding'],['defender','Defender'],['fear','Fear'],['islandwalk','Islandwalk'],['mountainwalk','Mountainwalk'],['swampwalk','Swampwalk'],['forestwalk','Forestwalk'],['plainswalk','Plainswalk']];
+function kwChips(c){
+  const o=[]; for(const [k,l] of KWSHOW){ let h=false; try{ h=hasKw(c,k); }catch(e){} if(h) o.push(l); }
+  for(const col of COLORS){ let h=false; try{ h=hasKw(c,'pro'+col); }catch(e){} if(h) o.push('Pro-'+({W:'white',U:'blue',B:'black',R:'red',G:'green'}[col])); }
+  return o;
+}
 function bfCardHTML(c){
-  const me=ctrl(c)===0;
+  const me=ctrl(c)===0, d=c.d;
   const cls=['bc'];
   if(isValidTarget(targetRefFor(c))) cls.push('valid');
   if(ui.attack&&ui.attack.has(c.iid)) cls.push('sel');
   if(c.attacking) cls.push('atk');
   if(c.blocking||(ui.blocks&&ui.blocks.has(c.iid))) cls.push('blk');
   if(ui.blockSel===c.iid) cls.push('sel');
+  if(c.tapped) cls.push('tapped');
+  const fl=[];
+  const atkNow=c.attacking||(ui.attack&&ui.attack.has(c.iid));
+  if(atkNow) fl.push('<span class="fl fa">Attacking</span>');
+  if(c.blocking||(ui.blocks&&ui.blocks.has(c.iid))) fl.push('<span class="fl fb">Blocking</span>');
+  if(c.tapped) fl.push('<span class="fl ft">Tapped</span>');
+  if(isCreature(c)&&c.sick&&!c.tapped&&!atkNow) fl.push('<span class="fl fs">Just arrived</span>');
   const b=[];
-  if(c.damage>0) b.push(`<span class="badge dmg">${c.damage} dmg</span>`);
+  if(c.damage>0) b.push(`<span class="badge dmg">${c.damage} damage</span>`);
   if(c.counters>0) b.push(`<span class="badge">+${c.counters}/+${c.counters}</span>`);
-  if(c.regen>0) b.push(`<span class="badge">regen</span>`);
-  if(isCreature(c)&&c.sick&&!c.tapped) b.push(`<span class="badge sick">new</span>`);
-  if(c.temp.kw.includes('flying')) b.push(`<span class="badge">flying</span>`);
-  const face=cardFace(c.d,`<div class="badges">${b.join('')}</div>`,cls.join(' '),`data-iid="${c.iid}" tabindex="0"`,c);
-  const as=auras(c).map(a=>`<button class="chip ${isValidTarget(targetRefFor(a))?'valid':''}" data-iid="${a.iid}">${esc(a.d.name)}</button>`).join('');
+  if(c.regen>0) b.push(`<span class="badge">Regen</span>`);
+  const kws=kwChips(c).map(k=>`<span class="kw">${k}</span>`).join('');
+  const stat=isCreature(c)?(()=>{ const p=pow(c),t=tough(c)-c.damage; const k=(v,bb)=>v>bb?'up':v<bb?'dn':''; return `<div class="pt"><span class="${k(p,d.p)}">${p}</span><i>/</i><span class="${k(t,d.t)}">${t}</span></div>`; })():'';
+  const label=`${d.name}${isCreature(c)?`, ${pow(c)}/${tough(c)-c.damage}`:''}${c.tapped?', tapped':''}${atkNow?', attacking':''}`;
+  const face=`<div class="card f-${frameOf(d)} ${cls.join(' ')}" data-iid="${c.iid}" tabindex="0" aria-label="${esc(label)}">
+    <div class="hd"><div class="nm">${esc(d.name)}</div></div>
+    <div class="artw">${artHTML(d)}${fl.length?`<div class="fls">${fl.join('')}</div>`:''}${stat}<div class="badges">${b.join('')}</div></div>
+    <div class="ty">${esc(typeLine(d))}</div>
+    ${kws?`<div class="kws">${kws}</div>`:''}</div>`;
+  const as=auras(c).map(a=>`<button class="chip ${isValidTarget(targetRefFor(a))?'valid':''}" data-iid="${a.iid}" title="Attached: ${esc(a.d.name)}">✦ ${esc(a.d.name)}</button>`).join('');
   let note='';
   if(c.blocking){ const a=byIid(c.blocking); if(a) note=`<div class="blocknote">blocks ${esc(a.d.name)}</div>`; }
-  else if(ui.blocks&&ui.blocks.has(c.iid)){ const a=byIid(ui.blocks.get(c.iid)); note=`<div class="blocknote">blocks ${esc(a.d.name)}</div>`; }
-  const atkCls=(c.attacking||(ui.attack&&ui.attack.has(c.iid)))?(me?'atk-me':'atk-opp'):'';
+  else if(ui.blocks&&ui.blocks.has(c.iid)){ const a=byIid(ui.blocks.get(c.iid)); if(a) note=`<div class="blocknote">blocks ${esc(a.d.name)}</div>`; }
+  const atkCls=atkNow?(me?'atk-me':'atk-opp'):'';
   return `<div class="slot ${c.tapped?'tap':''} ${atkCls}">${face}${as?`<div class="chips">${as}</div>`:''}${note}</div>`;
 }
 function landsHTML(pid){
   const groups=new Map();
   for(const c of g.bf) if(isLand(c)&&ctrl(c)===pid){ if(!groups.has(c.d.id)) groups.set(c.d.id,[]); groups.get(c.d.id).push(c); }
-  if(!groups.size) return '<span class="empty">No lands</span>';
+  if(!groups.size) return '<span class="empty">No lands in play</span>';
   return [...groups.values()].map(cs=>{
     const d=cs[0].d, unt=cs.filter(c=>!c.tapped).length;
     const valid=ui.targeting&&cs.some(c=>legal(ui.targeting.spec,targetRefFor(c),ui.targeting.src));
     const dots=cs.map(c=>`<span class="dot ${c.tapped?'t':''}"></span>`).join('');
-    return `<button class="landg f-L ${valid?'valid':''} ${unt?'':'dim'}" data-land="${d.id}" data-owner="${pid}" title="${unt} of ${cs.length} untapped">${[...d.produce].map(pipHTML).join('')} ${esc(d.name)} <span class="dots">${dots}</span></button>`;
+    return `<button class="landg f-L ${valid?'valid':''} ${unt?'':'dim'}" data-land="${d.id}" data-owner="${pid}" title="${esc(d.name)}: ${unt} of ${cs.length} untapped" aria-label="${esc(d.name)}, ${unt} of ${cs.length} untapped"><span class="lp">${[...d.produce].map(pipHTML).join('')}</span><span class="ln">${esc(d.name)}</span><span class="lc"><b>${unt}</b>/${cs.length}</span><span class="dots">${dots}</span></button>`;
   }).join('');
 }
-function permsHTML(pid){
-  const cs=g.bf.filter(c=>!isLand(c)&&!c.attachedTo&&ctrl(c)===pid);
-  cs.sort((a,b)=>(isCreature(b)-isCreature(a)));
-  return cs.length?cs.map(bfCardHTML).join(''):`<span class="empty">${pid===0?'Your':'Their'} creatures and artifacts appear here</span>`;
+function densCls(n){ return n>14?'dens2':n>8?'dens1':''; }
+function creaturesOf(pid){ return g.bf.filter(c=>isCreature(c)&&!isLand(c)&&!c.attachedTo&&ctrl(c)===pid); }
+function othersOf(pid){ return g.bf.filter(c=>!isCreature(c)&&!isLand(c)&&!c.attachedTo&&ctrl(c)===pid); }
+function creaturesHTML(pid){
+  const cs=creaturesOf(pid);
+  return cs.length?cs.map(bfCardHTML).join(''):`<span class="empty">${pid===0?'You have':'They have'} no creatures</span>`;
+}
+function othersHTML(pid){ return othersOf(pid).map(bfCardHTML).join(''); }
+function permsHTML(pid){ const cs=g.bf.filter(c=>!isLand(c)&&!c.attachedTo&&ctrl(c)===pid); cs.sort((a,b)=>(isCreature(b)-isCreature(a))); return cs.length?cs.map(bfCardHTML).join(''):`<span class="empty">Nothing in play</span>`; }
+function sideHTML(pid){
+  const opp=pid===1, cr=creaturesOf(pid), ot=othersOf(pid);
+  const nm=opp?playerName(1):'You';
+  const lands=`<div class="row lands" data-zone="Lands" aria-label="${opp?'Opponent':'Your'} lands">${landsHTML(pid)}</div>`;
+  const others=ot.length?`<div class="row others ${densCls(ot.length)}" data-zone="Artifacts &amp; enchantments" aria-label="${opp?'Opponent':'Your'} artifacts and enchantments">${othersHTML(pid)}</div>`:'';
+  const crow=`<div class="row creatures ${opp?'opp':''} ${densCls(cr.length)}" data-zone="Creatures (${cr.length})" aria-label="${opp?'Opponent':'Your'} creatures">${creaturesHTML(pid)}</div>`;
+  return opp?`<section class="side opp" aria-label="Opponent's side"><div class="pbar">${pbarHTML(1)}</div>${lands}${others}${crow}</section>`
+            :`<section class="side me" aria-label="Your side">${crow}${others}${lands}<div class="pbar">${pbarHTML(0)}</div></section>`;
 }
 function poolHTML(pid){ const P=g.players[pid].pool; let s=''; for(const k of [...COLORS,'C']) for(let i=0;i<P[k];i++) s+=pipHTML(k==='C'?'1':k); return s?`<span class="pool" title="Mana pool">${s}</span>`:''; }
 function pbarHTML(pid){
@@ -2753,17 +2891,13 @@ function render(){
   const pv=ui.preview?cardFace(ui.preview.d,'','big','',ui.preview.zone==='bf'?ui.preview:null):'<div class="muted" style="font-size:12px">Hover a card to read it. On a phone, press and hold.</div>';
   $('#duelView').innerHTML=`
   <div class="board">
-    <div class="pbar">${pbarHTML(1)}</div>
-    <div class="row lands" aria-label="Opponent lands">${landsHTML(1)}</div>
-    <div class="row opp" aria-label="Opponent permanents">${permsHTML(1)}</div>
+    ${sideHTML(1)}
     <div class="mid">
       <div><div class="phases">${ph}</div></div>
       <div class="prompt"><div class="turn">Turn ${g.turn} · ${g.active===0?'Your turn':esc(playerName(1))+"'s turn"}</div>${text}</div>
       <div class="acts">${acts.map(([a,l,c])=>`<button class="btn ${c||''}" data-act="${a}">${l}</button>`).join('')}</div>
     </div>
-    <div class="row" aria-label="Your permanents">${permsHTML(0)}</div>
-    <div class="row lands" aria-label="Your lands">${landsHTML(0)}</div>
-    <div class="pbar">${pbarHTML(0)}</div>
+    ${sideHTML(0)}
     <div class="hand" aria-label="Your hand">${hand}</div>
   </div>
   <aside class="rail">
