@@ -1,5 +1,6 @@
 name: Build all platforms
-on: { workflow_dispatch: {}, push: { branches: [main], paths: ['web/**','electron/**','android/**','.github/**'] }, release: { types: [published] } }
+permissions: { contents: write }
+on: { workflow_dispatch: { inputs: { tag: { description: 'Release tag to attach the builds to (optional)', required: false } } }, push: { branches: [main], paths: ['web/**','electron/**','android/**','.github/**'] }, release: { types: [published] } }
 jobs:
   desktop:
     runs-on: ubuntu-latest
@@ -16,8 +17,8 @@ jobs:
           cd dist && zip -qr Shandalar-Duels-linux-steamos-x64.zip "Shandalar Duels-linux-x64" && zip -qr Shandalar-Duels-windows-x64.zip "Shandalar Duels-win32-x64"
       - uses: actions/upload-artifact@v4
         with: { name: desktop-builds, path: dist/*.zip }
-      - if: github.event_name == 'release'
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/*.zip --clobber
+      - if: github.event_name == 'release' || inputs.tag != ''
+        run: gh release upload "${{ github.event.release.tag_name || inputs.tag }}" dist/*.zip --clobber --repo "${{ github.repository }}"
         env: { GH_TOKEN: "${{ github.token }}" }
   android:
     runs-on: ubuntu-latest
@@ -34,3 +35,6 @@ jobs:
       - run: cd android && gradle assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with: { name: Shandalar-Duels-apk, path: android/app/build/outputs/apk/debug/app-debug.apk }
+      - if: github.event_name == 'release' || inputs.tag != ''
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Shandalar-Duels-android-debug.apk && gh release upload "${{ github.event.release.tag_name || inputs.tag }}" Shandalar-Duels-android-debug.apk --clobber --repo "${{ github.repository }}"
+        env: { GH_TOKEN: "${{ github.token }}" }
