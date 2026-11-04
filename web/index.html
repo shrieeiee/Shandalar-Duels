@@ -431,6 +431,9 @@ body.cb #duelView .pip,body.cb #modal .pip{font-size:13px}
 }
 /* ===== v37 original-style duel layout: left panel + wide board ===== */
 #duelView.table{grid-template-columns:248px minmax(0,1fr);gap:14px;align-items:start}
+body.fitduel{overscroll-behavior:none}
+@media (max-height:700px){ body.fitduel .topbar{padding-block:4px;gap:8px} body.fitduel .brand{font-size:18px} body.fitduel .brand small{display:none} :root{--hw:74px;--hh:104px} #duelView.table{gap:8px} .lp{gap:6px} }
+@media (max-height:1000px){ :root{--hw:92px;--hh:130px} .side .row{padding-top:26px;padding-bottom:8px} .side{gap:8px} .pl .life{font-size:50px} .hand{padding-top:8px} }
 .lp{display:flex;flex-direction:column;gap:10px;min-width:0;position:sticky;top:8px}
 .pl{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:16px;background:rgba(10,16,22,.72);border:1px solid rgba(255,255,255,.1)}
 .pl.opp{box-shadow:inset 3px 0 0 rgba(208,86,59,.75)}
@@ -4559,6 +4562,22 @@ function renderAdv(){
 }
 function advFit(){ const w=document.querySelector('.advwrap'); if(!w) return; const avail=Math.min(window.innerWidth-24,1000); const sc=avail>=480?Math.floor(avail/(VW*TS)):avail/(VW*TS); w.style.width=Math.round(VW*TS*sc+8)+'px'; }
 typeof window!=='undefined'&&window.addEventListener('resize',()=>{ if(ui.view==='adv') advFit(); });
+/* ----- fit the duel screen to one viewport (desktop 1080p, Android tablets) ----- */
+let _fitZ=1;
+function fitDuel(){
+  if(typeof document==='undefined'||HEADLESS) return;
+  const el=document.getElementById('duelView'); if(!el) return;
+  const on=ui.view==='duel'&&!el.hidden&&innerWidth>=620&&innerHeight>=420;
+  document.body.classList.toggle('fitduel',on);
+  if(!on){ el.style.zoom=''; return; }
+  const top=el.getBoundingClientRect().top+(window.scrollY||0); const avail=innerHeight-top-8;
+  let z=_fitZ||1;
+  for(let i=0;i<4;i++){ el.style.zoom=String(+z.toFixed(3)); const h=el.getBoundingClientRect().height; if(h>avail+1||(z<1&&h<avail-14)){ const nz=Math.max(.3,Math.min(1,z*avail/h)); if(Math.abs(nz-z)<.004) break; z=nz; } else break; }
+  _fitZ=z; el.style.zoom=z>=.999?'':String(+z.toFixed(3));
+  const fits=el.getBoundingClientRect().bottom<=innerHeight+2; document.body.style.overflowY=fits?'hidden':'';
+  if(fits) window.scrollTo(0,0);
+}
+if(typeof window!=='undefined'){ const _r0=render; render=function(){ _r0(); fitDuel(); }; window.addEventListener('resize',()=>{ _fitZ=1; fitDuel(); }); window.addEventListener('orientationchange',()=>setTimeout(()=>{ _fitZ=1; fitDuel(); },250)); }
 function advShow(){
   if(!$('#advCanvas')) renderAdv();
   advFit();
