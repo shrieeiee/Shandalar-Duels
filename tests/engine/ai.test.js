@@ -6,7 +6,7 @@ const E=globalThis.__engine; const G=()=>E.getG();
 const sections=[];
 sections.push(['new-card AI plays (positive)',async()=>{ const o={}; const dk={plains:10,island:10,swamp:10,mountain:10,forest:10,grizzly_bears:10};
  await E.newGame(E.expand(dk),E.expand(dk),['A','B'],true); const g=G();
- const reset=()=>{ g.bf.length=0; for(const P of g.players){ P.graveyard=[]; P.hand=[]; P.exile=[]; P.life=20; P.pool={W:0,U:0,B:0,R:0,G:0,C:0}; P.rpool=null; } g.stack=[]; g.over=false; g.dmgFx=[]; g.step='main1'; g.active=1; g.landsPlayed=1; g.camo=0; };
+ const reset=()=>{ g.bf.length=0; for(const P of g.players){ P.graveyard=[]; P.hand=[]; P.exile=[]; P.life=20; P.decked=false; P.lichLost=false; P.poison=0; P.pool={W:0,U:0,B:0,R:0,G:0,C:0}; P.rpool=null; } g.stack=[]; g.over=false; g.dmgFx=[]; g.step='main1'; g.active=1; g.landsPlayed=1; g.camo=0; };
  const mk=(id,pid=1,z='bf')=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); if(z==='bf'){ E.moveTo(c,'bf'); c.controller=pid; c.sick=false; } else { E.moveTo(c,z); } return c; };
  const lands=(pid,t,n)=>{ for(let i=0;i<n;i++) mk(t,pid); };
  const pick=(p)=>{ const a=E.aiPick(p); return a; };
@@ -40,7 +40,7 @@ assert.strictEqual(o.camo,'Camouflage'); assert.match(o.catap,/Orcish Catapult/)
 }]);
 sections.push(['new-card AI plays (negative + glyphs + Pentacle)',async()=>{ const o={}; const dk={plains:10,island:10,swamp:10,mountain:10,forest:10,grizzly_bears:10};
  await E.newGame(E.expand(dk),E.expand(dk),['A','B'],true); const g=G();
- const reset=()=>{ g.bf.length=0; for(const P of g.players){ P.graveyard=[]; P.hand=[]; P.exile=[]; P.life=20; P.pool={W:0,U:0,B:0,R:0,G:0,C:0}; P.rpool=null; } g.stack=[]; g.over=false; g.dmgFx=[]; g.step='main1'; g.active=1; g.landsPlayed=1; g.camo=0; };
+ const reset=()=>{ g.bf.length=0; for(const P of g.players){ P.graveyard=[]; P.hand=[]; P.exile=[]; P.life=20; P.decked=false; P.lichLost=false; P.poison=0; P.pool={W:0,U:0,B:0,R:0,G:0,C:0}; P.rpool=null; } g.stack=[]; g.over=false; g.dmgFx=[]; g.step='main1'; g.active=1; g.landsPlayed=1; g.camo=0; };
  const mk=(id,pid=1,z='bf')=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); if(z==='bf'){ E.moveTo(c,'bf'); c.controller=pid; c.sick=false; } else E.moveTo(c,z); return c; };
  const lands=(pid,t,n)=>{ for(let i=0;i<n;i++) mk(t,pid); };
  const run=async p=>{ const a=E.aiPick(p); if(!a) return null; await a.run(); return a; };
@@ -76,4 +76,28 @@ sections.push(['Primal Clay AI form',async()=>{ const dk={plains:10,island:10,sw
  
 assert.deepStrictEqual(o.plain.slice(0,2),[3,3]); assert.deepStrictEqual(o.opp20.slice(0,2),[3,3]); assert.deepStrictEqual(o.lowOppNoAir.slice(0,2),[2,2]); assert.deepStrictEqual(o.danger,[1,6,'Shapeshifter Wall']);
 }]);
-(async()=>{ let bad=0; for(const [n,f] of sections){ try{ await f(); console.log('ok  ',n); }catch(e){ bad++; console.log('FAIL',n,'-',String(e&&e.message||e).split('\n')[0]); } } console.log(bad?'FAILED '+bad:'all passed'); process.exit(bad?1:0); })();
+sections.push(['artifact AI (Sword, Voodoo Doll, Runesword, Egg, Vault, Arena, Reverberation)',async()=>{ const dk={plains:10,island:10,swamp:10,mountain:10,forest:10,grizzly_bears:10};
+ await E.newGame(E.expand(dk),E.expand(dk),['A','B'],true); const g=G(); const o={};
+ const reset=()=>{ g.bf.length=0; for(const P of g.players){ P.graveyard=[]; P.hand=[]; P.exile=[]; P.life=20; P.decked=false; P.lichLost=false; P.poison=0; P.pool={W:0,U:0,B:0,R:0,G:0,C:0}; P.rpool=null; P.library.length=Math.min(P.library.length,30); } g.stack=[]; g.over=false; g.dmgFx=[]; g.step='main1'; g.active=1; g.landsPlayed=1; };
+ const mk=(id,pid=1,z='bf')=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); if(z==='bf'){ E.moveTo(c,'bf'); c.controller=pid; c.sick=false; } else E.moveTo(c,z); return c; };
+ const lands=(pid,t,n)=>{ for(let i=0;i<n;i++) mk(t,pid); };
+ const run=async p=>{ const a=E.aiPick(p); if(!a) return null; await a.run(); return a; };
+ const top=()=>{ const t=g.stack[g.stack.length-1]; return t?t.name:null; };
+ g.players[1].ai=true;
+ // Sword of the Ages: lethal by sacrificing creatures
+ reset(); lands(1,'mountain',1); const sw=mk('sword_of_the_ages',1); sw.tapped=false; g.players[0].life=7; mk('earth_elemental',1); mk('hill_giant',1); await run(1); o.sword=top(); const it=g.stack[g.stack.length-1]; o.swordSacs=it&&it.sacs&&it.sacs.length;
+ // Sword: not lethal, no big target -> nothing
+ reset(); mk('sword_of_the_ages',1).tapped=false; mk('grizzly_bears',1); mk('grizzly_bears',0); await run(1); o.swordNeg=top();
+ // Voodoo Doll at main2 keeps itself alive
+ reset(); lands(1,'plains',4); const vd=mk('voodoo_doll',1); vd.cn={pin:1}; g.step='main2'; await run(1); o.voodoo=top();
+ // Runesword: attacker blocked, +2 power kills blocker
+ reset(); lands(1,'plains',3); mk('runesword',1); const at=mk('hill_giant',1); at.attacking=true; const bl=mk('earth_elemental',0); bl.blockedBy=[]; at.wasBlocked=true; at.blockedBy=[bl.iid]; bl.blocking=at.iid; g.step='block'; g.active=1; await run(1); o.rune=top();
+ // Triassic Egg hatch with a big creature in hand
+ reset(); const egg=mk('triassic_egg',1); egg.cn={hatchling:2}; mk('serra_angel',1,'hand'); mk('earth_elemental',1,'hand'); await run(1); o.egg=top();
+ // Arena of the Ancients vs a legend
+ reset(); lands(1,'plains',3); mk('arena_of_the_ancients',1,'hand'); mk('livonya_silone',0); await run(1); o.arena=top();
+ // Reverberation vs sorcery burn at face
+ reset(); lands(1,'island',4); mk('reverberation',1,'hand'); const fb=mk('fireball',0,'hand'); g.active=0; g.players[0].pool.R=9; E.castSpell(0,fb,[{kind:'player',pid:1}],5); await run(1); o.reverb=top();
+ assert.match(o.sword,/Sword of the Ages/); assert.ok(o.swordSacs>=2); assert.strictEqual(o.swordNeg,null); assert.match(o.voodoo||'',/Voodoo Doll/); assert.match(o.rune||'',/Runesword/); assert.match(o.egg||'',/Triassic Egg/); assert.strictEqual(o.arena,'Arena of the Ancients'); assert.strictEqual(o.reverb,'Reverberation');
+}]);
+(async()=>{ let bad=0; for(const [n,f] of sections){ try{ await f(); console.log('ok  ',n); }catch(e){ bad++; console.log('FAIL',n,'-',String(e&&e.message||e).split('\n')[0], process.env.STACK?'\n'+(e&&e.stack||''):''); } } console.log(bad?'FAILED '+bad:'all passed'); process.exit(bad?1:0); })();
