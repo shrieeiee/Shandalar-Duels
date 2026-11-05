@@ -23,3 +23,5 @@ This is an unofficial, non-commercial fan project, not affiliated with or endors
 ## Tests
 
 `npm install` then `npm test` runs the engine tests (Node only: AI-vs-AI simulations, card behaviour checks, AI regression assertions) and, if Playwright is installed, the UI tests. `npm run test:fast` shortens the simulations; `npm run test:engine` skips the UI tests (UI tests need `npx playwright install chromium`). Set `GAME=/path/to/index.html` to test another build. CI runs them on every push.
+
+`tests/tools/arena.js` plays the current combat AI against the previous one on the same decks (`GAMES=1000 node tests/tools/arena.js`); `tests/tools/balance.js` reports per-card win and use rates for the newer cards.

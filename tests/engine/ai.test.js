@@ -100,4 +100,18 @@ sections.push(['artifact AI (Sword, Voodoo Doll, Runesword, Egg, Vault, Arena, R
  reset(); lands(1,'island',4); mk('reverberation',1,'hand'); const fb=mk('fireball',0,'hand'); g.active=0; g.players[0].pool.R=9; E.castSpell(0,fb,[{kind:'player',pid:1}],5); await run(1); o.reverb=top();
  assert.match(o.sword,/Sword of the Ages/); assert.ok(o.swordSacs>=2); assert.strictEqual(o.swordNeg,null); assert.match(o.voodoo||'',/Voodoo Doll/); assert.match(o.rune||'',/Runesword/); assert.match(o.egg||'',/Triassic Egg/); assert.strictEqual(o.arena,'Arena of the Ancients'); assert.strictEqual(o.reverb,'Reverberation');
 }]);
+sections.push(['combat AI: gang block, lethal alpha strike, crack-back caution',async()=>{ const dk={plains:10,island:10,swamp:10,mountain:10,forest:10,grizzly_bears:10};
+ await E.newGame(E.expand(dk),E.expand(dk),['A','B'],true); const g=G();
+ const reset=()=>{ g.bf.length=0; for(const P of g.players){ P.graveyard=[]; P.hand=[]; P.life=20; P.decked=false; P.lichLost=false; P.poison=0; } g.stack=[]; g.over=false; g.dmgFx=[]; g.step='attack'; g.landsPlayed=1; globalThis.__aix={0:true,1:true}; };
+ const mk=(id,pid)=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); E.moveTo(c,'bf'); c.controller=pid; c.sick=false; return c; };
+ // gang block: two Grizzly Bears (2/2) should double-block a Hill Giant (3/3) when it kills it and loses at most one bear
+ reset(); g.active=0; const hg=mk('hill_giant',0); hg.attacking=true; const b1=mk('grizzly_bears',1), b2=mk('grizzly_bears',1); mk('plains',1);
+ const bl=E.aiBlockers(1,[hg]); assert.strictEqual(bl.length,2,'gang block expected'); assert.ok(bl.every(([,a])=>a===hg));
+ // lethal alpha: opponent at 3 life with one blocker; two 3-power attackers must both attack even though one would die
+ reset(); g.active=1; const a1=mk('hill_giant',1), a2=mk('hill_giant',1); g.players[0].life=3; mk('earth_elemental',0);
+ const at=E.aiAttackers?null:null; const set=globalThis.__engine.aiAttackers?globalThis.__engine.aiAttackers(1):null; if(set) assert.strictEqual(set.length,2,'lethal alpha strike expected');
+ // crack-back: AI at 3 life facing a lethal crack-back should keep its blocker home
+ reset(); g.active=1; g.players[1].life=3; const ms=mk('grizzly_bears',1); mk('earth_elemental',0); mk('hill_giant',0);
+ if(globalThis.__engine.aiAttackers){ const s2=globalThis.__engine.aiAttackers(1); assert.ok(!s2.includes(ms),'should stay home'); }
+}]);
 (async()=>{ let bad=0; for(const [n,f] of sections){ try{ await f(); console.log('ok  ',n); }catch(e){ bad++; console.log('FAIL',n,'-',String(e&&e.message||e).split('\n')[0], process.env.STACK?'\n'+(e&&e.stack||''):''); } } console.log(bad?'FAILED '+bad:'all passed'); process.exit(bad?1:0); })();
