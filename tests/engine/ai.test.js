@@ -137,4 +137,20 @@ sections.push(['classic cards: Hazezon Tamar, Shahrazad (real subgame), Word of 
  reset(); mk('swamp',1); mk('swamp',1); mk('word_of_command',1,'hand'); mk('serra_angel',0,'hand'); mk('earth_elemental',0,'hand'); await run(1); assert.strictEqual(top(),'Word of Command');
  reset(); mk('mountain',1); mk('mountain',1); mk('mountain',1); mk('falling_star',1,'hand'); mk('hill_giant',0); mk('earth_elemental',0); await run(1); assert.strictEqual(top(),'Falling Star');
 }]);
+sections.push(['AI uses v57 abilities: Angelic Page, Cyclops, Hornclaw, Assembly-Worker, Call of the Wild',async()=>{ const dk={plains:10,island:10,swamp:10,mountain:10,forest:10,grizzly_bears:10};
+ await E.newGame(E.expand(dk),E.expand(dk),['A','B'],true); let g=G(); g.players[1].ai=true;
+ const reset=()=>{ g=G(); g.bf.length=0; for(const P of g.players){ P.graveyard=[]; P.hand=[]; P.exile=[]; P.life=20; P.decked=false; P.lichLost=false; P.poison=0; P.pool={W:0,U:0,B:0,R:0,G:0,C:0}; P.library=[]; } g.stack=[]; g.over=false; g.dmgFx=[]; g.step='main1'; g.active=1; g.landsPlayed=1; };
+ const mk=(id,pid=1,z='bf')=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); if(z==='bf'){ E.moveTo(c,'bf'); c.controller=pid; c.sick=false; } else E.moveTo(c,z); return c; };
+ const run=async()=>{ const a=E.aiPick(1); if(!a) return false; await a.run(); let n=0; while(g.stack.length&&n++<6) await E.resolveTop(); E.sba(); return true; };
+ // Cyclops: lethal sacrifice
+ reset(); mk('bloodshot_cyclops',1); mk('serra_angel',1); g.players[0].life=4; let ov=false; try{ assert.ok(await run()); }catch(e){ if(e&&e.constructor&&e.constructor.name==='Over') ov=true; else throw e; } assert.ok(ov||g.players[0].life<=0||g.over);
+ // Angelic Page saves a blocker
+ reset(); g.active=0; g.step='block'; const pg=mk('angelic_page',1); const bl=mk('grizzly_bears',1), at=mk('grizzly_bears',0); at.attacking=true; at.blockedBy=[bl.iid]; bl.blocking=at.iid; at.wasBlocked=true; const ok=await run(); assert.ok(ok); assert.strictEqual(E.pow(bl),3);
+ // Assembly-Worker: +1 power makes the attack lethal
+ reset(); g.active=1; g.step='block'; const aw=mk('assembly_worker',1); aw.attacking=true; g.players[0].life=3; assert.ok(await run().catch(e=>true)); assert.ok(E.pow(aw)===3||g.over||g.players[0].life<=0);
+ // Hornclaw: evasive lethal attack
+ reset(); g.step='attack'; for(let i=0;i<6;i++) mk('forest',1); const hc=mk('coastal_hornclaw',1); hc.attacking=true; mk('hill_giant',0); g.players[0].life=3; assert.ok(await run()); assert.ok(E.hasKw(hc,'flying'));
+ // Call of the Wild with creature-heavy library
+ reset(); g.step='end'; g.active=0; mk('call_of_the_wild',1); for(let i=0;i<10;i++){ mk('grizzly_bears',1,'library'); } g.players[1].pool={W:0,U:0,B:0,R:0,G:4,C:0}; for(let i=0;i<4;i++) mk('forest',1); assert.ok(await run()); assert.ok(g.bf.filter(k=>k.d.id==='grizzly_bears').length>=1);
+}]);
 (async()=>{ let bad=0; for(const [n,f] of sections){ try{ await f(); console.log('ok  ',n); }catch(e){ bad++; console.log('FAIL',n,'-',String(e&&e.message||e).split('\n')[0], process.env.STACK?'\n'+(e&&e.stack||''):''); } } console.log(bad?'FAILED '+bad:'all passed'); process.exit(bad?1:0); })();
