@@ -114,4 +114,27 @@ sections.push(['combat AI: gang block, lethal alpha strike, crack-back caution',
  reset(); g.active=1; g.players[1].life=3; const ms=mk('grizzly_bears',1); mk('earth_elemental',0); mk('hill_giant',0);
  if(globalThis.__engine.aiAttackers){ const s2=globalThis.__engine.aiAttackers(1); assert.ok(!s2.includes(ms),'should stay home'); }
 }]);
+sections.push(['classic cards: Hazezon Tamar, Shahrazad (real subgame), Word of Command, Falling Star + AI',async()=>{ const dk={plains:10,island:10,swamp:10,mountain:10,forest:10,grizzly_bears:10};
+ await E.newGame(E.expand(dk),E.expand(dk),['A','B'],true); let g=G(); const o={};
+ const reset=()=>{ g=G(); g.bf.length=0; for(const P of g.players){ P.graveyard=[]; P.hand=[]; P.exile=[]; P.life=20; P.decked=false; P.lichLost=false; P.poison=0; P.pool={W:0,U:0,B:0,R:0,G:0,C:0}; P.library=[]; } g.stack=[]; g.over=false; g.dmgFx=[]; g.step='main1'; g.active=1; g.landsPlayed=1; g.delayUp=[]; };
+ const mk=(id,pid=1,z='bf')=>{ const c=E.mkCard(id,pid); g.cards.set(c.iid,c); if(z==='bf'){ E.moveTo(c,'bf'); c.controller=pid; c.sick=false; } else E.moveTo(c,z); return c; };
+ const lib=n=>{ for(let i=0;i<n;i++){ mk(i%2?'forest':'grizzly_bears',0,'library'); mk(i%2?'mountain':'grizzly_bears',1,'library'); } };
+ const run=async p=>{ const a=E.aiPick(p); if(!a) return null; await a.run(); return a; };
+ const top=()=>{ const t=g.stack[g.stack.length-1]; return t?t.name:null; };
+ g.players[1].ai=true;
+ // subgame leaves the outer game untouched
+ reset(); lib(30); mk('serra_angel',1); const gid=g.id, n0=g.bf.length; const w=await E.runSubgame(); assert.ok(w===0||w===1||w===-1); assert.strictEqual(G(),g); assert.strictEqual(g.id,gid); assert.strictEqual(g.bf.length,n0); assert.strictEqual(g.players[0].library.length,30);
+ // Shahrazad: everyone who does not win loses half their life rounded up
+ reset(); lib(30); const sh=mk('shahrazad',1,'hand'); g.players[1].pool.W=2; g.players[0].life=15; g.players[1].life=11; E.castSpell(1,sh,[],0); await E.resolveTop(); const L=[g.players[0].life,g.players[1].life]; assert.ok([[15,5],[7,11],[7,5]].some(x=>x[0]===L[0]&&x[1]===L[1]),'life '+L);
+ // Word of Command discards a nonland card
+ reset(); g.players[1].pool.B=2; const woc=mk('word_of_command',1,'hand'); mk('serra_angel',0,'hand'); mk('plains',0,'hand'); E.castSpell(1,woc,[{kind:'player',pid:0}],0); await E.resolveTop(); assert.deepStrictEqual(g.players[0].graveyard.map(k=>k.d.name),['Serra Angel']); assert.deepStrictEqual(g.players[0].hand.map(k=>k.d.name),['Plains']);
+ // Falling Star: only flipped creatures get hit; a dead or tapped result is possible, never both untouched twice in 30 tries
+ let hit=0; for(let i=0;i<30;i++){ reset(); const f=mk('falling_star',1,'hand'); const v=mk('earth_elemental',0); g.players[1].pool.R=3; E.castSpell(1,f,[{kind:'card',iid:v.iid}],0); await E.resolveTop(); if(v.tapped&&v.damage===3) hit++; } assert.ok(hit>=5&&hit<=25,'coin flips '+hit);
+ // Hazezon Tamar: X Sand Warriors at next upkeep (X = lands then), exiled when Hazezon leaves
+ reset(); for(let i=0;i<4;i++) mk('forest',1); const hz=mk('hazezon_tamar',1,'hand'); g.players[1].pool={W:1,U:0,B:0,R:1,G:1,C:4}; E.castSpell(1,hz,[],0); await E.resolveTop(); assert.strictEqual(g.bf.filter(k=>k.d.id==='sand_warrior').length,0); g.turn=2; g.active=1; await E.runTurn().catch(()=>{}); assert.strictEqual(g.bf.filter(k=>k.d.id==='sand_warrior').length,4); E.moveTo(hz,'graveyard'); assert.strictEqual(g.bf.filter(k=>k.d.id==='sand_warrior').length,0);
+ // AI casts
+ reset(); lib(30); mk('plains',1); mk('plains',1); mk('shahrazad',1,'hand'); g.players[0].life=20; g.players[1].life=6; assert.strictEqual(top(),null); await run(1); assert.strictEqual(top(),'Shahrazad');
+ reset(); mk('swamp',1); mk('swamp',1); mk('word_of_command',1,'hand'); mk('serra_angel',0,'hand'); mk('earth_elemental',0,'hand'); await run(1); assert.strictEqual(top(),'Word of Command');
+ reset(); mk('mountain',1); mk('mountain',1); mk('mountain',1); mk('falling_star',1,'hand'); mk('hill_giant',0); mk('earth_elemental',0); await run(1); assert.strictEqual(top(),'Falling Star');
+}]);
 (async()=>{ let bad=0; for(const [n,f] of sections){ try{ await f(); console.log('ok  ',n); }catch(e){ bad++; console.log('FAIL',n,'-',String(e&&e.message||e).split('\n')[0], process.env.STACK?'\n'+(e&&e.stack||''):''); } } console.log(bad?'FAILED '+bad:'all passed'); process.exit(bad?1:0); })();

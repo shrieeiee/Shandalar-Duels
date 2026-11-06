@@ -530,7 +530,7 @@ body.fitduel{overscroll-behavior:none;overflow:hidden}
 
 <script>
 "use strict";
-const HEADLESS = typeof document === 'undefined';
+let HEADLESS = typeof document === 'undefined';
 
 /* =====================================================================
    CARD DATABASE — classic-era cards, functional rules text only
@@ -1700,7 +1700,7 @@ const OPPONENTS=[
 /* =====================================================================
    ENGINE
    ===================================================================== */
-let g=null, IID=1, SID=1;
+let g=null, IID=1, SID=1, SUBGAME=0;
 const ui={wait:null,targeting:null,preview:null,attack:null,attackable:null,blocks:null,blockSel:null,fullControl:false,skipTurn:-1,speed:1,view:'deck',modal:null,suppressClick:false};
 class Abort extends Error{}
 class Over extends Error{}
@@ -2398,6 +2398,17 @@ D({id:'orcish_catapult',name:'Orcish Catapult',cost:'XRR',type:'Instant',ai:'non
   resolve:x=>{ const ts=x.targets.map(tObj).filter(t=>t&&onBf(t)&&isCreature(t)); if(!ts.length){ log('Orcish Catapult: no targets remain.'); return; } const dist=new Map(); for(let i=0;i<x.x;i++){ const t=rndOf(ts); dist.set(t,(dist.get(t)||0)+1); } for(const [t,n] of dist){ t.tcnt=(t.tcnt||0)-n; log(`${t.d.name} gets ${n} -0/-1 counter${n===1?'':'s'}.`); } }});
 D({id:'part_water',name:'Part Water',cost:'XXU',type:'Sorcery',ai:'none',target:TG.creature,multiTarget:true,targetN:xv=>xv,text:'X target creatures gain islandwalk until end of turn. (They can\'t be blocked as long as defending player controls an Island.)',
   resolve:x=>{ for(const r of x.targets){ const t=tObj(r); if(t&&onBf(t)){ t.temp.kw.push('islandwalk'); log(`${t.d.name} gains islandwalk.`); } } }});
+
+D({id:'sand_warrior',name:'Sand Warrior',cost:'',type:'Creature',sub:'Sand Warrior',p:1,t:1,colOv:'RGW',token:true,ai:'creature',text:'Token.'});
+D({id:'hazezon_tamar',name:'Hazezon Tamar',cost:'4RGW',type:'Legendary Creature',sub:'Human Warrior',p:2,t:4,ai:'creature',text:'When Hazezon Tamar enters the battlefield, create X 1/1 red, green and white Sand Warrior creature tokens at the beginning of your next upkeep, where X is the number of lands you control at that time. When Hazezon Tamar leaves the battlefield, exile all Sand Warriors.',
+  etb:x=>{ (g.delayUp=g.delayUp||[]).push({pid:ctrl(x.src),src:x.src.iid}); log('Hazezon Tamar: the sands will rise at the beginning of your next upkeep.'); },
+  onLeave:c=>{ for(const k of [...g.bf]) if(k.d.id==='sand_warrior') moveTo(k,'exile'); log('Hazezon Tamar leaves: all Sand Warriors are exiled.'); }});
+D({id:'falling_star',name:'Falling Star',cost:'2R',type:'Sorcery',target:TG.creature,multiTarget:true,targetN:()=>2,adapted:true,ai:'fstar',text:'Digital adaptation: choose one or two creatures; flip a coin for each. Falling Star deals 3 damage to each creature whose flip is heads, and taps it. (The printed card is flipped onto the table and has no effect if it does not turn over.)',
+  resolve:x=>{ for(const r of x.targets){ const t=tObj(r); if(!t||!onBf(t)) continue; const heads=Math.random()<.5; log(`Falling Star flips ${heads?'heads':'tails'} for ${t.d.name}.`); if(heads){ dealDamage(x.src,{kind:'card',iid:t.iid},3); if(onBf(t)) t.tapped=true; } } }});
+D({id:'shahrazad',name:'Shahrazad',cost:'WW',type:'Sorcery',adapted:true,ai:'shahrazad',text:'Players play a Magic subgame, using their libraries as their decks. Each player who doesn\'t win the subgame loses half their life, rounded up. (Both subgame players are played by the AI here.)',
+  resolve:async x=>{ log('Shahrazad: the players begin a subgame...'); const w=await runSubgame(); log(w<0?'The subgame is a draw.':`${playerName(w)} wins the subgame.`); for(const P of g.players){ if(P.id===w) continue; const l=Math.ceil(P.life/2); P.life-=l; log(`${P.name} loses ${l} life (Shahrazad).`,P.id); } sba(); }});
+D({id:'word_of_command',name:'Word of Command',cost:'BB',type:'Instant',target:TG.player,adapted:true,ai:'woc',text:'Digital adaptation: look at target player\'s hand and choose a nonland card from it. That player discards it. (The printed card lets you control that player while they play the card.)',
+  resolve:async x=>{ const P=g.players[x.targets[0].pid]; const el=P.hand.filter(k=>!isLand(k)); log(`${playerName(x.ctrl)} looks at ${P.name}'s hand.`,x.ctrl); if(!el.length){ log('There is no nonland card to choose.'); return; } const c=await pickFrom(x.ctrl,'Word of Command',`Choose a nonland card from ${P.name}'s hand. It is discarded.`,el,k=>k.d.name,l=>l.slice().sort((a,b)=>cmcOf(b.d)-cmcOf(a.d))[0]); if(c){ moveTo(c,'graveyard'); log(`${P.name} discards ${c.d.name} (Word of Command).`,P.id); } }});
 D({id:'recall',name:'Recall',cost:'XXU',type:'Sorcery',ai:'none',text:'Discard X cards, then return a card from your graveyard to your hand for each card discarded this way. Exile Recall.',
   resolve:async x=>{ const p=x.ctrl, P=g.players[p]; let n=0; for(let i=0;i<(x.x||0)&&P.hand.length;i++){ await discardOne(p); n++; } for(let i=0;i<n;i++){ const gy=P.graveyard.filter(k=>k!==x.src); if(!gy.length) break; const pick=await pickFrom(p,'Recall','Return a card from your graveyard to your hand.',gy,k=>k.d.name,it=>it.sort((a,b)=>val(b)-val(a))[0]); if(pick){ moveTo(pick,'hand'); log(`${playerName(p)} returns ${pick.d.name} to their hand.`,p); } } moveTo(x.src,'exile'); }});
 D({id:'reincarnation',name:'Reincarnation',cost:'1GG',type:'Instant',ai:'none',target:TG.creature,text:'Choose target creature. When that creature dies this turn, return a creature card from its owner\'s graveyard to the battlefield under that creature\'s owner\'s control.',
@@ -2955,6 +2966,7 @@ async function runTurn(){
   for(const c of g.bf) if(c.animated&&c.animated.keep===ap) c.animated=null;
   for(const c of g.bf) if(c.glyph>0&&ctrl(c)===ap){ c.glyph--; log(`A glyph counter is removed from ${c.d.name}.`); }
   for(const c of [...g.bf]) if(c.d.upkeep&&onBf(c)){ const r=c.d.upkeep({src:c,pid:ap}); if(r&&r.then) await r; }
+  for(const t of (g.delayUp||[]).filter(t=>t.pid===ap)){ g.delayUp.splice(g.delayUp.indexOf(t),1); const n=g.bf.filter(l=>isLand(l)&&ctrl(l)===ap).length; log(`The sands rise: ${n} Sand Warrior token${n===1?'':'s'}.`); for(let i=0;i<n;i++) makeToken(ap,'sand_warrior'); }
   for(const c of [...g.players[ap].exile]) if(c.d.exileUpkeep){ const r=c.d.exileUpkeep(c,ap); if(r&&r.then) await r; }
   { const ml=g.bf.find(l=>l.mire&&l.mireOwner===ap&&!(byIid(l.mireSrc)&&onBf(byIid(l.mireSrc)))); if(ml){ ml.mire=false; ml.landOv=null; log(`The mire counter is removed from ${ml.d.name}.`); } }
   { const P=g.players[ap]; for(const c of [...P.graveyard]) if(c.d.id==='nether_shadow'){ const i=P.graveyard.indexOf(c); if(P.graveyard.slice(i+1).filter(k=>/Creature/.test(k.d.type)).length>=3){ moveTo(c,'bf'); c.controller=ap; c.sick=false; log('Nether Shadow returns to the battlefield.',ap); } } }
@@ -3210,7 +3222,8 @@ function aiBlockersV0(p,attackers){
 }
 
 /* ---- AI v2: combat lookahead (per-seat switch globalThis.__aix = {0:bool,1:bool}; default on) ---- */
-function aiNew(p){ const o=globalThis.__aix; return o?!!o[p]:true; }
+function aiLevel(p){ const o=globalThis.__aix; if(!o) return 1; const v=o[p]; return v===true?1:(+v||0); }
+function aiNew(p){ return aiLevel(p)>0; }
 function aiKills(a,B){ let rem=Math.max(0,pow(a)); const dead=[]; for(const b of B.slice().sort((x,y)=>val(y)-val(x))){ if(protectedFrom(b,a)) continue; const need=Math.max(1,tough(b)-b.damage); if(rem>=need){ dead.push(b); rem-=need; } } return dead; }
 function aiSimCombat(atk,pairs){
   const by=new Map(); for(const [b,a] of pairs){ if(!by.has(a)) by.set(a,[]); by.get(a).push(b); }
@@ -3285,8 +3298,53 @@ function aiBlockersV1(p,attackers){
     used.add(b); out.push([b,a]); blockedA.add(a); inc-=Math.max(0,pow(a)); }
   return out;
 }
-function aiAttackers(p){ return aiNew(p)&&globalThis.__aixMode!=='blk'?aiAttackersV1(p):aiAttackersV0(p); }
-function aiBlockers(p,attackers){ return aiNew(p)&&globalThis.__aixMode!=='atk'?aiBlockersV1(p,attackers):aiBlockersV0(p,attackers); }
+
+/* ---- AI v3: state-evaluation scoring (life curve + creature worth) and block-assignment search ---- */
+function aiLifeV(L){ if(L<=0) return -50000; let t=0; for(let k=1;k<=Math.min(L,60);k++) t+=Math.floor(24/k)+12; return t; }
+function aiCV(c){ let v=((2*Math.max(0,pow(c))+3)*(Math.max(0,tough(c))+4))/2; if(hasKw(c,'flying')) v*=1.5; if(hasKw(c,'firstStrike')) v*=1.5; if(hasKw(c,'regen')||hasKw(c,'regeneration')) v*=1.5; if((c.d.abilities||[]).some(a=>!a.mana)) v*=1.2; return v; }
+function aiOutcome(meLife,oppLife,myAlive,oppAlive){ const K=(globalThis.__aixP&&globalThis.__aixP.lifeK)||1; let sc=K*(aiLifeV(meLife)-aiLifeV(oppLife)); for(const c of myAlive) sc+=aiCV(c); for(const c of oppAlive) sc-=aiCV(c); return sc; }
+function aiBlockersV2(p,attackers){
+  const O=1-p, life=g.players[p].life, oppLife=g.players[O].life;
+  const avail=g.bf.filter(b=>isCreature(b)&&ctrl(b)===p&&!b.tapped);
+  const mineAll=creaturesOf(p), oppAll=creaturesOf(O);
+  const capped=g.bf.some(k=>k.d.id==='caverns_of_despair');
+  const score=pairs=>{ if(capped&&new Set(pairs.map(([b])=>b)).size>2) return -1e9; const r=aiSimCombat(attackers,pairs); const mAlive=mineAll.filter(c=>!r.deadB.includes(c)), oAlive=oppAll.filter(c=>!r.deadA.includes(c)); return aiOutcome(life-r.lifeDmg,oppLife,mAlive,oAlive); };
+  let cur=aiBlockersV1(p,attackers); let best=score(cur);
+  const none=aiSimCombat(attackers,[]); const s0=score([]); if(s0>best){ cur=[]; best=s0; }
+  for(let it=0;it<8;it++){
+    let move=null,mb=best;
+    for(const b of avail){
+      const rest=cur.filter(([x])=>x!==b); const opts=[null,...attackers.filter(a=>canBlock(b,a))];
+      for(const a of opts){ const cand=a?[...rest,[b,a]]:rest; if(cand.length===cur.length&&cand.every(([x,y],i)=>cur[i]&&cur[i][0]===x&&cur[i][1]===y)) continue; const sc=score(cand); if(sc>mb+0.5){ mb=sc; move=cand; } }
+    }
+    if(!move) break; cur=move; best=mb;
+  }
+  return cur;
+}
+function aiAttackersV2(p){
+  const O=1-p, P=g.players[p], OP=g.players[O];
+  const mine=g.bf.filter(c=>canAttack(c,p));
+  const must=mine.filter(a=>a.d.mustAttack||a.forceAtk===g.turn);
+  const base=aiAttackersV0(p);
+  const L=mine.filter(a=>pow(a)>0&&!must.includes(a)).sort((a,b)=>aiCV(b)-aiCV(a));
+  const cand=[]; const add=set=>{ const u=[...new Set([...must,...set])]; const key=u.map(x=>x.iid).sort((x,y)=>x-y).join(','); if(!cand.some(c=>c.key===key)) cand.push({key,set:u}); };
+  add(base); add(must); add(L);
+  for(let k=1;k<L.length;k++){ add(L.slice(0,k)); const extra=L.filter(x=>!base.includes(x)).slice(0,k); if(extra.length) add([...base,...extra]); }
+  for(const x of base) add(base.filter(y=>y!==x));
+  const mineAll=creaturesOf(p), oppAll=creaturesOf(O);
+  let best=null;
+  for(const c of cand){
+    const set=c.set; let r={lifeDmg:0,deadA:[],deadB:[]};
+    if(set.length){ const was=set.map(a=>a.attacking); for(const a of set) a.attacking=true; let pairs; try{ pairs=aiBlockersV2(O,set); } finally { set.forEach((a,i)=>{ a.attacking=was[i]; }); } r=aiSimCombat(set,pairs); }
+    const back=aiCrackBack(p,set,r.deadA,r.deadB);
+    const meLife=P.life-Math.round(back*0.6);
+    let sc=aiOutcome(back>=P.life?0:meLife,OP.life-r.lifeDmg,mineAll.filter(x=>!r.deadA.includes(x)),oppAll.filter(x=>!r.deadB.includes(x)));
+    c.sc=sc; if(!best||sc>best.sc+1) best=c; else if(c.key===cand[0].key&&sc>=best.sc-1) best=c;
+  }
+  return best.set;
+}
+function aiAttackers(p){ const l=aiLevel(p); return l===2||l===4?aiAttackersV2(p):l>=1?aiAttackersV1(p):aiAttackersV0(p); }
+function aiBlockers(p,attackers){ const l=aiLevel(p); return l===2||l===3?aiBlockersV2(p,attackers):l>=1?aiBlockersV1(p,attackers):aiBlockersV0(p,attackers); }
 function aiDiscardPick(p){
   const h=g.players[p].hand, lands=h.filter(isLand);
   if(lands.length>3) return lands[0];
@@ -3385,6 +3443,9 @@ function aiEvalCard(p,c,S){
     case 'arena': { if(!S.main) return null; const lg2=k=>isCreature(k)&&/Legendary/.test(k.d.type); const th=oppCr.filter(lg2).reduce((a,k)=>a+val(k),0), mine=myCr.filter(lg2).reduce((a,k)=>a+val(k),0); return th-mine>=6?R(35+th):null; }
     case 'reverb': { if(!S.inResp||S.top.kind!=='spell'||S.top.ctrl===p||!/Sorcery/.test(S.top.card.d.type)||!legal(d.target,{kind:'stack',sid:S.top.sid},c)) return null; const t=S.top; const n=t.card.d.ai==='burn'?t.card.d.n:(t.card.d.ai==='xburn'?t.x:0); if(!(n>0)) return null; const faceMe=t.targets.some(r=>r.kind==='player'&&r.pid===p); const hitMine=t.targets.some(r=>r.kind==='card'&&byIid(r.iid)&&ctrl(byIid(r.iid))===p&&n>=tough(byIid(r.iid))-byIid(r.iid).damage&&val(byIid(r.iid))>=4); return (faceMe&&n>=3)||hitMine?R(160,[{kind:'stack',sid:t.sid}]):null; }
     case 'voodoo': { if(!S.main||P.life<15||g.bf.filter(k=>isLand(k)&&ctrl(k)===p).length<7) return null; return R(16); }
+    case 'shahrazad': { if(!S.main||S.top) return null; const me=P.life, op=OP.life; if(me<=3||P.library.length<12||OP.library.length<12) return null; return Math.ceil(op/2)-Math.ceil(me/2)>=5?R(35+(op-me)):null; }
+    case 'woc': { if(!(S.main||S.oppEnd)) return null; const el=OP.hand.filter(k=>!isLand(k)); if(el.length<2) return null; return R(28+Math.max(...el.map(k=>cmcOf(k.d)))*3,[face]); }
+    case 'fstar': { if(!S.main) return null; const cs=oppCr.filter(k=>lg(k)&&!hasKw(k,'regen')).sort((a,b)=>val(b)-val(a)); if(!cs.length) return null; const pick=cs.slice(0,2); const gain=pick.reduce((a,k)=>a+val(k)*(tough(k)-k.damage<=3?0.5:0.15),0); return gain>=5?R(25+gain*2,pick.map(ref)):null; }
     case 'creature': return S.main?R(20+cmcOf(d)*6+(d.p||0)+(d.t||0)):null;
     case 'artifact': return S.main?R(d.aiScore||20):null;
     case 'burn': {
@@ -3710,6 +3771,20 @@ async function humanBlockers(attackers){
 /* =====================================================================
    GAME SETUP (shared by UI and headless test)
    ===================================================================== */
+
+/* Real subgame (Shahrazad): both libraries are played out as decks by the AI on a separate game state; the outer game is restored untouched. */
+async function runSubgame(){
+  const old=g, oldH=HEADLESS; SUBGAME++; HEADLESS=true; let winner=-1;
+  try{
+    g={id:Math.random(),players:[],bf:[],stack:[],cards:new Map(),turn:0,active:0,step:'start',landsPlayed:0,log:[],over:null,oppMeta:null,extra:0,fog:false,ante:[],antePlay:false,side:[[],[]],sub:true};
+    for(const pid of [0,1]){ const src=old.players[pid]; const P={id:pid,name:src.name,ai:true,remote:false,life:20,library:[],hand:[],graveyard:[],exile:[],pool:zeroPool(),decked:false,shield:0,cop:[]};
+      for(const c of src.library){ const k=mkCard(c.id,pid); P.library.push(k); g.cards.set(k.iid,k); } shuffle(P.library); g.players.push(P); }
+    try{ await opening(); while(g.turn<80) await runTurn(); }
+    catch(e){ if(!(e instanceof Over)&&!(e instanceof Abort)) throw e; }
+    winner=g.over?g.over.winner:-1;
+  } finally { g=old; HEADLESS=oldH; SUBGAME--; }
+  return winner;
+}
 function newGame(list0,list1,names,bothAI){
   if(ui.wait&&ui.wait.rej){ const w=ui.wait; ui.wait=null; try{ w.rej(new Abort()); }catch(e){} }
   if(NET.wait&&NET.wait.rej){ const w=NET.wait; NET.wait=null; try{ w.rej(new Abort()); }catch(e){} }
@@ -3960,7 +4035,7 @@ function promptAndActions(){
   }
   return {text,acts};
 }
-function render(){
+function render(){ if(SUBGAME) return;
   if(HEADLESS) return;
   if(NET.role==='host') netSync(); netChatUpdate();
   if(ui.view==='deck'||ui.view==='adv') return;
@@ -4014,6 +4089,7 @@ function creditsModal(){
   openModal(`<h2>Credits</h2><div class="credits" style="line-height:1.55;font-size:14px;max-height:62vh;overflow:auto">
   <p><b>Shandalar Duels</b> &copy; 2026 shrieeiee &middot; GNU GPL v3.0 or later. An unofficial fan project, not affiliated with or endorsed by Wizards of the Coast. <i>Magic: The Gathering</i> and its card names are property of Wizards of the Coast.</p>
   <p><b>Inspired by</b> <i>Sorcery: The Gathering / Magic: The Gathering &ndash; Shandalar</i> (MicroProse, 1997) and the open-source <b>ShandalarGodot</b> project by b0realis, whose card scripts and documentation guided how many cards and rules were implemented here.</p>
+  <p><b>Digital adaptations</b>: Falling Star, Shahrazad and Word of Command cannot be played exactly as printed in a digital game. Falling Star flips coins instead of dexterity; Shahrazad plays a real AI-vs-AI subgame of your libraries; Word of Command lets you choose from the opponent's hand. They are never given out as adventure rewards.</p>
   <p><b>Pixel art</b> (CC0 / public domain, credit given with thanks):<br>
   &bull; <b>Tiny Town</b>, <b>Tiny Dungeon</b> and <b>Roguelike pack</b> by <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (kenney.nl), with help from Lynn Evers on the Roguelike pack.</p>
   <p><b>Character sprites</b> (CC BY 3.0):<br>
@@ -4436,7 +4512,7 @@ function genMap(){
 }
 // ---------------------------------------------------------------- economy
 const cardValue=d=>POWER.includes(d.id)?420:Math.max(12,cmcOf(d)*13+(isCreatureD(d)?6:0)+(cmcOf(d)>=5?14:0)+10);
-const advPool=()=>Object.values(DB).filter(d=>!d.token&&!d.basic&&!/Land/.test(d.type)&&!POWER.includes(d.id));
+const advPool=()=>Object.values(DB).filter(d=>!d.token&&!d.adapted&&!d.basic&&!/Land/.test(d.type)&&!POWER.includes(d.id));
 function advSample(rnd,arr,n){ const a=[...arr]; const out=[]; while(out.length<n&&a.length) out.push(a.splice(Math.floor(rnd()*a.length),1)[0]); return out; }
 function advStarter(col){
   const rnd=Math.random; const mono=advPool().filter(d=>colorsOfD(d).length===1&&colorsOfD(d)[0]===col&&cmcOf(d)<=5);
@@ -5946,5 +6022,5 @@ function handleAct(a){
 
 { const _cs=castSpell, _dd=dealDamage; castSpell=function(...a){ const r=_cs.apply(this,a); if(r) sfx('cast'); return r; }; dealDamage=function(...a){ sfx('hit'); return _dd.apply(this,a); }; }
 if(!HEADLESS) init();
-else globalThis.__engine={aiAttackers,aiBlockers,bandsLeg,camoBlocks,whimsyEffect,faerieEffect,castSpell,askCardName,returnToBf,dmgReplace,activate,playLand,manaSources,timingOK,aiPick,imprisonCombat,wormsOn,discardOne,aiEvalAbility,legendResolve,queuePrompt,abCost,mkCard,combat,planPay,payCost,parseCost,resolveTop,moveTo,sacrifice,upkeepMay,ctrl,pow,tough,canAttack,canBlock,hasKw,legal,TG,drawCards,dealDamage,costOf,destroy,isLand,isCreature,sba,cardValue,advStarter,advAutoDeck,WIZ,setG:v=>{g=v;},netView,netSerialize,netBuildGuest,NET,canHumanAct,castableNow,abilityUsable,artHTML,newGame,DB,STARTERS,OPPONENTS,expand,getG:()=>g,ui,genMap,anteResult,MW,MH,T,BLOCK};
+else globalThis.__engine={runTurn,runSubgame,aiAttackers,aiBlockers,bandsLeg,camoBlocks,whimsyEffect,faerieEffect,castSpell,askCardName,returnToBf,dmgReplace,activate,playLand,manaSources,timingOK,aiPick,imprisonCombat,wormsOn,discardOne,aiEvalAbility,legendResolve,queuePrompt,abCost,mkCard,combat,planPay,payCost,parseCost,resolveTop,moveTo,sacrifice,upkeepMay,ctrl,pow,tough,canAttack,canBlock,hasKw,legal,TG,drawCards,dealDamage,costOf,destroy,isLand,isCreature,sba,cardValue,advStarter,advAutoDeck,WIZ,setG:v=>{g=v;},netView,netSerialize,netBuildGuest,NET,canHumanAct,castableNow,abilityUsable,artHTML,newGame,DB,STARTERS,OPPONENTS,expand,getG:()=>g,ui,genMap,anteResult,MW,MH,T,BLOCK};
 </script>
