@@ -4383,7 +4383,7 @@ function saveStore(){ try{ localStorage.setItem(STORE,JSON.stringify({saved:db.s
 function deckCount(){ return Object.values(db.deck.cards).reduce((a,b)=>a+b,0); }
 function deckProblems(){
   const p=[]; const n=deckCount();
-  if(n<40) p.push(`Needs at least 40 cards (has ${n}).`);
+  const mn=ui.advEdit?advMin():40; if(n<mn) p.push(`Needs at least ${mn} cards (has ${n}).`);
   for(const [id,k] of Object.entries(db.deck.cards)) if(!DB[id].basic&&k>4) p.push(`${DB[id].name}: at most 4 copies.`);
   return p;
 }
@@ -4607,11 +4607,14 @@ function advAutoDeck(coll,col){
   if(left>0) deck[bl[col||'G']]=(deck[bl[col||'G']]||0)+left;
   return deck;
 }
+const DIFFS=[['Easy',30],['Medium',35],['Hard',40],['Expert',40]];
+const advDiff=()=>(typeof adv!=='undefined'&&adv&&adv.diff!=null)?adv.diff:2;
+const advMin=()=>DIFFS[advDiff()][1];
 function advNormalizeDeck(){
   const d=adv.deck.cards;
   for(const [id,n] of Object.entries(d)){ const lim=DB[id].basic?99:Math.min(4,adv.coll[id]||0); if(lim<=0) delete d[id]; else if(n>lim) d[id]=lim; }
   let tot=Object.values(d).reduce((a,b)=>a+b,0);
-  if(tot<40){ const bl={W:'plains',U:'island',B:'swamp',R:'mountain',G:'forest'}; const pips={}; for(const [id,n] of Object.entries(d)) for(const k of colorsOfD(DB[id])) pips[k]=(pips[k]||0)+n; const top=Object.keys(pips).sort((a,b)=>pips[b]-pips[a])[0]||adv.col||'G'; d[bl[top]]=(d[bl[top]]||0)+(40-tot); }
+  if(tot<advMin()){ const bl={W:'plains',U:'island',B:'swamp',R:'mountain',G:'forest'}; const pips={}; for(const [id,n] of Object.entries(d)) for(const k of colorsOfD(DB[id])) pips[k]=(pips[k]||0)+n; const top=Object.keys(pips).sort((a,b)=>pips[b]-pips[a])[0]||adv.col||'G'; d[bl[top]]=(d[bl[top]]||0)+(advMin()-tot); }
 }
 const advSide=()=>{ const out=[]; for(const [id,n] of Object.entries(adv.coll)){ const used=adv.deck.cards[id]||0; for(let i=0;i<n-used&&out.length<40;i++) out.push(id); } return out; };
 // ---------------------------------------------------------------- state
@@ -4656,7 +4659,7 @@ function advLoad(n){ try{ const s=JSON.parse(localStorage.getItem(advKeyFor(n||a
 function advSave(){ if(!adv) return; if(typeof ADV!=='undefined'&&ADV.seen) adv.seen=Array.prototype.join.call(ADV.seen,''); try{ localStorage.setItem(advKeyFor(advSlot()),JSON.stringify(adv)); }catch(e){} }
 function advNew(col){
   const coll=advStarter(col);
-  adv={v:1,col,gold:250,coll,deck:{name:'Adventure deck',cards:{}},x:MAP.start[0],y:MAP.start[1],dir:'u',def:{},clr:{},stock:0,steps:0,wins:0,losses:0,won:false};
+  adv={v:1,diff:(ui.advDiff!=null?ui.advDiff:2),col,gold:250,coll,deck:{name:'Adventure deck',cards:{}},x:MAP.start[0],y:MAP.start[1],dir:'u',def:{},clr:{},stock:0,steps:0,wins:0,losses:0,won:false};
   adv.deck.cards=advAutoDeck(coll,col); advNormalizeDeck(); advSave();
 }
 const advWizards=()=>REGS.filter(c=>adv.def['w'+c]).length;
@@ -5314,6 +5317,7 @@ function advTitle(){
   openModal(`<div class="atitle"><h1>Shandalar</h1><p class="sub">Walk the land, duel the wizards of the five colours, and ante your way to a legendary deck.</p>
     <div class="svtabs" role="group" aria-label="Save slots">${tabs}</div>
     ${sv?`<div class="cont"><div><b>Continue slot ${cur}</b><span>${sv.gold} gold · ${wz(sv)}/5 wizards defeated</span></div><button class="btn" data-adv="cont">Continue</button><button class="btn ghost small" data-adv="del">Delete</button></div>`:''}
+    <div class="hrow" style="justify-content:center;margin:6px 0" role="group" aria-label="Difficulty">${DIFFS.map((d,i)=>`<button class="btn small${(ui.advDiff!=null?ui.advDiff:2)===i?'':' ghost'}" data-adv="diff" data-id="${i}" aria-pressed="${(ui.advDiff!=null?ui.advDiff:2)===i}">${d[0]} · ${d[1]}+ cards</button>`).join('')}</div>
     <h3>${sv?`Or start fresh in slot ${cur} (overwrites it)`:'Choose your starting colour'}</h3>
     <div class="acolors">${REGS.map(k=>`<button data-adv="new" data-id="${k}" style="background:linear-gradient(160deg,${BL[k][1].split(',')[0]}66,${BL[k][1].split(',')[1]}dd)">${pipHTML(k)}<span>${CNAME[k]}</span><small>${BL[k][0]}</small></button>`).join('')}</div>
     <div class="hrow" style="justify-content:center;margin-top:10px"><button class="btn ghost small" data-adv="saves">Export / import saves</button><button class="btn ghost small" data-adv="a11y">Accessibility</button>${HAS_NATIVE?'<button class="btn ghost small" data-adv="art">Card art</button>':''}</div></div>`);
@@ -5332,6 +5336,7 @@ function advClick(el){
   const a=el.dataset.adv, id=el.dataset.id;
   if(a==='choice'){ if(ADV.dlg){ ADV.dlg.sel=+id; dlgAct(); } return; }
   if(a==='slot'){ pset('shd-slot',id); advTitle(); return; }
+  if(a==='diff'){ ui.advDiff=+id; advTitle(); return; }
   if(a==='del'){ if(!ui.cfDel){ ui.cfDel=true; toast(`Click Delete again to erase slot ${advSlot()}.`); return; } try{ localStorage.removeItem(advKeyFor(advSlot())); }catch(e){} advTitle(); return; }
   if(a==='art'){ artModal(); ui.onModalClose=()=>advTitle(); return; }
   if(a==='saves'){ ui.savesBack=()=>advTitle(); advSavesModal(); return; }
