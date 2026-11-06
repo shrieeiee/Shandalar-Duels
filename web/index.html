@@ -1764,7 +1764,7 @@ function colorsOfD(d){ if(d.colOv) return [d.colOv]; return COLORS.filter(k=>(d.
 const zeroPool=()=>({W:0,U:0,B:0,R:0,G:0,C:0});
 let PAYCARD=null;
 const payCtx=(c,fn)=>{ const o=PAYCARD; PAYCARD=c; try{ return fn(); } finally{ PAYCARD=o; } };
-function costOf(c){ const cost=parseCost(c.d.cost); if(typeof g!=='undefined'&&g&&g.bf&&!isLand(c)){ const n=g.bf.filter(k=>k.d.id==='stone_calendar'&&ctrl(k)===c.owner).length; if(n) cost.generic=Math.max(0,cost.generic-n); } if(typeof g!=='undefined'&&g&&g.bf&&!isLand(c)){ let r=0; if(isCreatureD(c.d)) r+=2*g.bf.filter(k=>k.d.id==='planar_gate'&&ctrl(k)===c.owner).length; if(isInstantD(c.d)||c.d.type==='Enchantment') r+=2*g.bf.filter(k=>k.d.id==='mana_matrix'&&ctrl(k)===c.owner).length; if(r) cost.generic=Math.max(0,cost.generic-r); }
+function costOf(c){ const cost=parseCost(c.d.cost); if(c.d.id==='avatar_of_hope'&&typeof g!=='undefined'&&g&&g.players[c.owner]&&g.players[c.owner].life<=3) cost.generic=Math.max(0,cost.generic-6); if(typeof g!=='undefined'&&g&&g.bf&&!isLand(c)){ const n=g.bf.filter(k=>k.d.id==='stone_calendar'&&ctrl(k)===c.owner).length; if(n) cost.generic=Math.max(0,cost.generic-n); } if(typeof g!=='undefined'&&g&&g.bf&&!isLand(c)){ let r=0; if(isCreatureD(c.d)) r+=2*g.bf.filter(k=>k.d.id==='planar_gate'&&ctrl(k)===c.owner).length; if(isInstantD(c.d)||c.d.type==='Enchantment') r+=2*g.bf.filter(k=>k.d.id==='mana_matrix'&&ctrl(k)===c.owner).length; if(r) cost.generic=Math.max(0,cost.generic-r); }
   if(typeof g!=='undefined'&&g&&g.bf&&!isLand(c)&&hasColor(c,'W')) cost.generic+=3*g.bf.filter(k=>k.d.id==='gloom').length; return cost; }
 function abCost(c,ab){ const k=parseCost(ab.cost); if(isArtifact(c)&&g.bf.some(a=>a.attachedTo===c.iid&&a.d.aura&&a.d.aura.powerArt)){ const tot=k.generic+k.W+k.U+k.B+k.R+k.G; const cut=Math.min(2,k.generic,Math.max(0,tot-1)); k.generic-=cut; } if(/Enchantment/.test(c.d.type)&&hasColor(c,'W')) k.generic+=3*g.bf.filter(m=>m.d.id==='gloom').length; return k; }
 
@@ -2409,6 +2409,70 @@ D({id:'shahrazad',name:'Shahrazad',cost:'WW',type:'Sorcery',adapted:true,ai:'sha
   resolve:async x=>{ log('Shahrazad: the players begin a subgame...'); const w=await runSubgame(); log(w<0?'The subgame is a draw.':`${playerName(w)} wins the subgame.`); for(const P of g.players){ if(P.id===w) continue; const l=Math.ceil(P.life/2); P.life-=l; log(`${P.name} loses ${l} life (Shahrazad).`,P.id); } sba(); }});
 D({id:'word_of_command',name:'Word of Command',cost:'BB',type:'Instant',target:TG.player,adapted:true,ai:'woc',text:'Digital adaptation: look at target player\'s hand and choose a nonland card from it. That player discards it. (The printed card lets you control that player while they play the card.)',
   resolve:async x=>{ const P=g.players[x.targets[0].pid]; const el=P.hand.filter(k=>!isLand(k)); log(`${playerName(x.ctrl)} looks at ${P.name}'s hand.`,x.ctrl); if(!el.length){ log('There is no nonland card to choose.'); return; } const c=await pickFrom(x.ctrl,'Word of Command',`Choose a nonland card from ${P.name}'s hand. It is discarded.`,el,k=>k.d.name,l=>l.slice().sort((a,b)=>cmcOf(b.d)-cmcOf(a.d))[0]); if(c){ moveTo(c,'graveyard'); log(`${P.name} discards ${c.d.name} (Word of Command).`,P.id); } }});
+
+// ===== v57: original-game cards 953-999 (Prophecy/Ice Age/Alliances/5th-edition set) =====
+const heraldType=c=>c.heraldType||null;
+Cr('angel_of_mercy','Angel of Mercy','4W','Angel',3,3,['flying'],'Flying. When Angel of Mercy enters, you gain 3 life.',{etb:x=>gainLife(ctrl(x.src),3)});
+Cr('angelic_page','Angelic Page','1W','Spirit Cleric',1,1,['flying'],'Flying. {T}: Target attacking or blocking creature gets +1/+1 until end of turn.',{abilities:[{tap:true,target:TG.atkOrBlk,ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.temp.p+=1; t.temp.t+=1; log(`${t.d.name} gets +1/+1 until end of turn.`); } }}]});
+Cr('ardent_militia','Ardent Militia','4W','Human Soldier',2,5,['vigilance'],'Vigilance.');
+Cr('aven_cloudchaser','Aven Cloudchaser','3W','Bird Soldier',2,2,['flying'],'Flying. When Aven Cloudchaser enters, destroy target enchantment.',{etb:async x=>{ const own=ctrl(x.src); const cs=g.bf.filter(k=>/Enchantment/.test(k.d.type)&&k!==x.src); const t=await pickFrom(own,'Aven Cloudchaser','Choose an enchantment to destroy.',cs,k=>k.d.name+' ('+playerName(ctrl(k))+')',it=>it.filter(k=>ctrl(k)!==own).sort((a,b)=>cmcOf(b.d)-cmcOf(a.d))[0]||it[0]); if(t) { log(`Aven Cloudchaser destroys ${t.d.name}.`); destroy(t); } }});
+Cr('aven_flock','Aven Flock','3W','Bird',2,3,['flying'],'Flying. {W}: Aven Flock gets +0/+1 until end of turn.',{abilities:[pumpAb('W',0,1)]});
+D({id:'blessed_reversal',name:'Blessed Reversal',cost:'1W',type:'Instant',ai:'none',text:'You gain 3 life for each creature attacking you.',resolve:x=>{ const n=g.bf.filter(c=>isCreature(c)&&c.attacking&&ctrl(c)!==x.ctrl).length; if(n) gainLife(x.ctrl,3*n); else log('No creatures are attacking.'); }});
+for(const [id,name,pr,sub] of [['urborg_volcano','Urborg Volcano','BR'],['elfhame_palace','Elfhame Palace','GW'],['shivan_oasis','Shivan Oasis','RG'],['coastal_tower','Coastal Tower','WU'],['salt_marsh','Salt Marsh','UB']])
+  D({id,name,cost:'',type:'Land',produce:pr,tappedLand:true,text:`${name} enters tapped. {T}: Add {${pr[0]}} or {${pr[1]}}.`});
+D({id:'beast_of_burden',name:'Beast of Burden',cost:'6',type:'Artifact Creature',sub:'Golem',p:0,t:0,dyn:c=>c.zone==='bf'?g.bf.filter(k=>isCreature(k)).length:0,ai:'creature',text:"Beast of Burden's power and toughness are each equal to the number of creatures on the battlefield."});
+D({id:'ensnaring_bridge',name:'Ensnaring Bridge',cost:'3',type:'Artifact',ai:'artifact',aiScore:22,text:"Creatures with power greater than the number of cards in your hand can't attack."});
+D({id:'glorious_anthem',name:'Glorious Anthem',cost:'1WW',type:'Enchantment',anthem:{mine:true,fn:(a,c)=>true,p:1,t:1},ai:'anthemAll',text:'Creatures you control get +1/+1.'});
+D({id:'noble_purpose',name:'Noble Purpose',cost:'3W',type:'Enchantment',ai:'artifact',aiScore:16,text:'Whenever a creature you control deals damage, you gain that much life.'});
+D({id:'pacifism',name:'Pacifism',cost:'1W',type:'Enchantment',sub:'Aura',target:TG.creature,aura:{noAtk:true,noBlk:true},ai:'pacify',text:"Enchant creature. Enchanted creature can't attack or block."});
+D({id:'rolling_stones',name:'Rolling Stones',cost:'1W',type:'Enchantment',ai:'artifact',aiScore:8,text:"Wall creatures can attack as though they didn't have defender."});
+D({id:'sanctimony',name:'Sanctimony',cost:'2W',type:'Enchantment',ai:'artifact',aiScore:12,text:'Whenever an opponent taps a Mountain for mana, you gain 1 life.'});
+Cr('abyssal_specter','Abyssal Specter','2BB','Specter',2,3,['flying'],'Flying. Whenever Abyssal Specter deals damage to a player, that player discards a card.',{onHit:(src,pid)=>{ discardOne(pid); }});
+D({id:'ambitions_cost',name:"Ambition's Cost",cost:'3B',type:'Sorcery',ai:'drawN',aiScore:48,text:'You draw three cards and you lose 3 life.',resolve:x=>{ drawCards(x.ctrl,3); g.players[x.ctrl].life-=3; log(`${playerName(x.ctrl)} loses 3 life.`); }});
+Cr('anaba_shaman','Anaba Shaman','3R','Minotaur Shaman',2,2,[],'{R}, {T}: Anaba Shaman deals 1 damage to any target.',{abilities:[dmgAb(1,0,'R')]});
+Cr('archivist','Archivist','2UU','Human Wizard',1,1,[],'{T}: Draw a card.',{abilities:[{tap:true,ai:'draw1',resolve:x=>drawCards(x.ctrl,1)}]});
+Cr('avatar_of_hope','Avatar of Hope','4WW','Avatar',4,9,['flying'],'If you have 3 or less life, this spell costs {6} less to cast. Flying.');
+Cr('aven_fisher','Aven Fisher','3U','Bird Archer',2,2,['flying'],'Flying. When Aven Fisher dies, you may draw a card.',{onDie:(c,own)=>drawCards(own,1)});
+D({id:'balance_of_power',name:'Balance of Power',cost:'3UU',type:'Sorcery',target:TG.player,ai:'none',text:'If target opponent has more cards in hand than you, draw cards equal to the difference.',resolve:x=>{ const t=x.targets[0]; if(!t||t.kind!=='player'||t.pid===x.ctrl) return; const d=g.players[t.pid].hand.length-g.players[x.ctrl].hand.length; if(d>0) drawCards(x.ctrl,d); }});
+Cr('balduvian_barbarians','Balduvian Barbarians','1RR','Human Barbarian',3,2,[],'');
+D({id:'blanchwood_armor',name:'Blanchwood Armor',cost:'G',type:'Enchantment',sub:'Aura',target:TG.creature,aura:{pf:a=>forests(ctrl(a)),tf:a=>forests(ctrl(a))},ai:'aura',text:'Enchant creature. Enchanted creature gets +1/+1 for each Forest you control.'});
+D({id:'blaze',name:'Blaze',cost:'XR',type:'Sorcery',target:TG.any,ai:'xburn',text:'Blaze deals X damage to any target.',resolve:x=>{ const t=x.targets[0]; if(!t) return; if(t.kind==='player') dealDamage({zone:'stack',d:{name:'Blaze'},temp:{},kw:[]},t,x.x); else { const c=byIid(t.iid); if(c&&onBf(c)) dealDamage({zone:'stack',d:{name:'Blaze'},temp:{},kw:[]},c,x.x); } }});
+Cr('blinding_angel','Blinding Angel','2WW','Angel',3,3,['flying'],"Flying. Whenever Blinding Angel deals combat damage to a player, that player skips their next combat phase.",{onHit:(src,pid)=>{ g.players[pid].noCombatTurn=g.turn+1; log(`${g.players[pid].name} will skip their next combat phase.`); }});
+Cr('bloodshot_cyclops','Bloodshot Cyclops','5R','Cyclops Giant',4,4,[],"{T}, Sacrifice a creature: Bloodshot Cyclops deals damage equal to the sacrificed creature's power to any target.",{abilities:[{cost:'',tap:true,sac:{spec:TG.myCreature},target:TG.any,ai:'none',label:'{T}, sacrifice a creature: damage = its power',resolve:x=>{ const n=x.item?x.item.sacPow:(x.sacPow||0); if(n>0) damageRef(x.src,x.targets[0],n); log(`Bloodshot Cyclops deals ${n} damage.`); }}]});
+D({id:'boil',name:'Boil',cost:'3R',type:'Instant',ai:'none',text:'Destroy all Islands.',resolve:x=>{ for(const l of g.bf.filter(l=>isLand(l)&&hasLT(l,'Island'))) destroy(l); }});
+D({id:'brass_herald',name:'Brass Herald',cost:'6',type:'Artifact Creature',sub:'Golem',p:2,t:2,anthem:{fn:(a,c)=>!!a.heraldType&&(c.d.sub||'').split(' ').includes(a.heraldType),p:1,t:1},ai:'creature',text:'As Brass Herald enters, choose a creature type. When it enters, reveal the top four cards of your library. Put all creature cards of the chosen type revealed this way into your hand and the rest on the bottom of your library in any order. Creatures of the chosen type get +1/+1.',
+  etb:async x=>{ const c=x.src, own=ctrl(c), P=g.players[own]; const types=[...new Set([...P.library,...P.hand,...g.bf].filter(k=>isCreatureD(k.d)).flatMap(k=>(k.d.sub||'').split(' ')).filter(Boolean))].sort();
+    if(!types.length) return; const cnt=t=>P.library.slice(-4).filter(k=>isCreatureD(k.d)&&(k.d.sub||'').split(' ').includes(t)).length+P.hand.filter(k=>isCreatureD(k.d)&&(k.d.sub||'').split(' ').includes(t)).length*0.01+g.bf.filter(k=>ctrl(k)===own&&isCreature(k)&&(k.d.sub||'').split(' ').includes(t)).length*0.01;
+    let t; if(aiQ(own)||HEADLESS||P.remote) t=types.slice().sort((a,b)=>cnt(b)-cnt(a))[0]; else t=await askChoice('Brass Herald','Choose a creature type.',types.map(k=>[k,k]));
+    c.heraldType=t; log(`Brass Herald: ${t}.`); const top=P.library.splice(Math.max(0,P.library.length-4),4).reverse(); const keep=[],rest=[];
+    for(const k of top){ if(isCreatureD(k.d)&&(k.d.sub||'').split(' ').includes(t)) keep.push(k); else rest.push(k); }
+    for(const k of keep){ k.zone='hand'; P.hand.push(k); log(`${P.name} reveals ${k.d.name} and puts it into their hand.`,own); }
+    for(const k of rest){ k.zone='library'; P.library.unshift(k); } if(rest.length) log(`${rest.length} card${rest.length===1?'':'s'} go to the bottom of the library.`); }});
+D({id:'bribery',name:'Bribery',cost:'3UU',type:'Sorcery',ai:'bribery',text:"Search target opponent's library for a creature card and put that card onto the battlefield under your control. Then that player shuffles.",
+  resolve:async x=>{ const own=x.ctrl, O=g.players[1-own]; const cs=O.library.filter(k=>isCreatureD(k.d)); let pick=null;
+    if(cs.length){ if(aiQ(own)||HEADLESS||g.players[own].remote) pick=cs.slice().sort((a,b)=>val(b)-val(a))[0]; else { const iid=await askLibrary(cs,'Bribery: choose a creature'); pick=iid==null?null:cs.find(k=>k.iid===iid)||null; } }
+    log(pick?`${playerName(own)} takes ${pick.d.name} from ${O.name}'s library.`:`${playerName(own)} finds no creature in ${O.name}'s library.`,own);
+    if(pick){ O.library=O.library.filter(k=>k!==pick); pick.zone='library'; moveTo(pick,'bf'); pick.controller=own; pick.sick=true; if(pick.d.etb) pick.d.etb({src:pick,ctrl:own}); }
+    O.library=shuffle(O.library); }});
+D({id:'call_of_the_wild',name:'Call of the Wild',cost:'2GG',type:'Enchantment',ai:'none',text:"{2}{G}{G}: Reveal the top card of your library. If it's a creature card, put it onto the battlefield. Otherwise, put it into your graveyard.",
+  abilities:[{cost:'2GG',ai:'none',resolve:x=>{ const P=g.players[x.ctrl]; if(!P.library.length) return; const k=P.library[P.library.length-1]; log(`${P.name} reveals ${k.d.name}.`,x.ctrl); if(isCreatureD(k.d)){ moveTo(k,'bf'); k.controller=x.ctrl; k.sick=true; if(k.d.etb) k.d.etb({src:k,ctrl:x.ctrl}); } else moveTo(k,'graveyard'); }}]});
+Cr('canopy_spider','Canopy Spider','1G','Spider',1,3,['reach'],'Reach.');
+Cr('canyon_wildcat','Canyon Wildcat','1R','Cat',2,1,['mountainwalk'],'Mountainwalk.');
+Cr('carrion_wall','Carrion Wall','1BB','Wall',3,2,['defender'],'{1}{B}: Regenerate Carrion Wall. Walls cannot attack.',{abilities:[regenAb('1B')]});
+D({id:'catalog',name:'Catalog',cost:'1U',type:'Instant',ai:'drawN',aiScore:30,text:'Draw two cards, then discard a card.',resolve:async x=>{ drawCards(x.ctrl,2); await discardOne(x.ctrl); }});
+D({id:'chastise',name:'Chastise',cost:'3W',type:'Instant',target:TG.attacker,ai:'chastise',text:'Destroy target attacking creature. You gain life equal to its power.',resolve:x=>{ const t=tObj(x.targets[0]); if(!t||!onBf(t)) return; const n=Math.max(0,pow(t)); destroy(t); if(n) gainLife(x.ctrl,n); }});
+D({id:'choke',name:'Choke',cost:'2G',type:'Enchantment',ai:'artifact',aiScore:18,text:"Islands don't untap during their controllers' untap steps."});
+Cr('cinder_wall','Cinder Wall','R','Wall',3,3,['defender'],'Defender. When Cinder Wall blocks, destroy it at end of combat.',{selfDieBlk:true});
+Cr('coastal_hornclaw','Coastal Hornclaw','4U','Bird',3,3,[],'Sacrifice a land: Coastal Hornclaw gains flying until end of turn.',{abilities:[{cost:'',sac:{spec:{k:'card',f:(c,s)=>isLand(c)&&ctrl(c)===ctrl(s),label:'a land you control'}},ai:'none',label:'Sacrifice a land: flying',resolve:x=>{ const c=x.src; if(onBf(c)){ c.temp.kw.push('flying'); log('Coastal Hornclaw gains flying until end of turn.'); } }}]});
+D({id:'coastal_piracy',name:'Coastal Piracy',cost:'2UU',type:'Enchantment',ai:'artifact',aiScore:22,text:'Whenever a creature you control deals combat damage to an opponent, you may draw a card.'});
+D({id:'coat_of_arms',name:'Coat of Arms',cost:'5',type:'Artifact',anthem:{fn:(a,c)=>true,n:(a,c)=>{ const ts=(c.d.sub||'').split(' ').filter(Boolean); if(!ts.length) return 0; return g.bf.filter(k=>k!==c&&isCreature(k)&&(k.d.sub||'').split(' ').some(t=>ts.includes(t))).length; }},ai:'artifact',aiScore:24,text:'Each creature gets +1/+1 for each other creature on the battlefield that shares at least one creature type with it.'});
+D({id:'coercion',name:'Coercion',cost:'2B',type:'Sorcery',ai:'coercion',text:'Target opponent reveals their hand. You choose a card from it. That player discards that card.',resolve:async x=>{ const own=x.ctrl, O=g.players[1-own]; if(!O.hand.length){ log(`${O.name} has no cards in hand.`); return; } let pick;
+    if(aiQ(own)||HEADLESS||g.players[own].remote) pick=O.hand.slice().sort((a,b)=>(isLand(a)?0:cmcOf(a.d)+1)-(isLand(b)?0:cmcOf(b.d)+1)).pop(); else { const iid=await askLibrary(O.hand,'Coercion: choose a card to discard'); pick=O.hand.find(k=>k.iid===iid)||O.hand[0]; }
+    moveTo(pick,'graveyard'); log(`${O.name} discards ${pick.d.name}.`,1-own); }});
+D({id:'collective_unconscious',name:'Collective Unconscious',cost:'3GG',type:'Sorcery',ai:'drawN',aiScore:40,text:'Draw a card for each creature you control.',resolve:x=>{ const n=g.bf.filter(k=>isCreature(k)&&ctrl(k)===x.ctrl).length; if(n) drawCards(x.ctrl,n); }});
+D({id:'concentrate',name:'Concentrate',cost:'2UU',type:'Sorcery',ai:'drawN',aiScore:50,text:'Draw three cards.',resolve:x=>drawCards(x.ctrl,3)});
+D({id:'assembly_worker',name:'Assembly-Worker',cost:'3',type:'Artifact Creature',sub:'Assembly-Worker',p:2,t:2,ai:'creature',text:'{T}: Target Assembly-Worker gets +1/+0 until end of turn.',abilities:[{tap:true,target:{k:'card',f:c=>isCreature(c)&&(c.d.sub||'').includes('Assembly-Worker'),label:'an Assembly-Worker'},ai:'none',resolve:x=>{ const t=tObj(x.targets[0]); if(t&&onBf(t)){ t.temp.p+=1; log(`${t.d.name} gets +1/+0 until end of turn.`); } }}]});
+// ===== end v57 =====
 D({id:'recall',name:'Recall',cost:'XXU',type:'Sorcery',ai:'none',text:'Discard X cards, then return a card from your graveyard to your hand for each card discarded this way. Exile Recall.',
   resolve:async x=>{ const p=x.ctrl, P=g.players[p]; let n=0; for(let i=0;i<(x.x||0)&&P.hand.length;i++){ await discardOne(p); n++; } for(let i=0;i<n;i++){ const gy=P.graveyard.filter(k=>k!==x.src); if(!gy.length) break; const pick=await pickFrom(p,'Recall','Return a card from your graveyard to your hand.',gy,k=>k.d.name,it=>it.sort((a,b)=>val(b)-val(a))[0]); if(pick){ moveTo(pick,'hand'); log(`${playerName(p)} returns ${pick.d.name} to their hand.`,p); } } moveTo(x.src,'exile'); }});
 D({id:'reincarnation',name:'Reincarnation',cost:'1GG',type:'Instant',ai:'none',target:TG.creature,text:'Choose target creature. When that creature dies this turn, return a creature card from its owner\'s graveyard to the battlefield under that creature\'s owner\'s control.',
@@ -2488,10 +2552,10 @@ function hasColor(c,col){ if(c.colOv) return c.colOv===col; { const sa=staticAni
 function auras(c){ return g.bf.filter(a=>a.attachedTo===c.iid); }
 function ctrl(c){ if(c.zone==='bf') for(const a of g.bf) if(a.attachedTo===c.iid&&a.d.aura&&a.d.aura.control) return a.controller; return c.controller; }
 function anthems(){ return g.bf.filter(a=>a.d.anthem); }
-function anthemOn(a,c){ const m=a.d.anthem; if(m.mine&&ctrl(a)!==ctrl(c)) return false; if(m.cond&&!m.cond(a)) return false; const mcol=m.color&&a.sleight&&a.sleight.from===m.color?a.sleight.to:m.color; return (mcol&&hasColor(c,mcol))||(m.sub&&c!==a&&isCreature(c)&&(c.d.sub||'').split(' ').includes(m.sub)); }
+function anthemOn(a,c){ const m=a.d.anthem; if(m.mine&&ctrl(a)!==ctrl(c)) return false; if(m.cond&&!m.cond(a)) return false; const mcol=m.color&&a.sleight&&a.sleight.from===m.color?a.sleight.to:m.color; return (mcol&&hasColor(c,mcol))||(m.fn&&isCreature(c)&&m.fn(a,c))||(m.sub&&c!==a&&isCreature(c)&&(c.d.sub||'').split(' ').includes(m.sub)); }
 function gmod(c,w){ let v=0; for(const a of g.bf){ const d=a.d; if(d.ctrlBonus&&ctrl(a)===ctrl(c)) v+=d.ctrlBonus(a,c,w); if(w==='p'){ if(d.atkP&&c.attacking&&ctrl(a)===ctrl(c)) v+=d.atkP; if(d.atkAllP&&c.attacking) v+=d.atkAllP; } else if(d.untapT&&!c.tapped&&!c.attacking&&ctrl(a)===ctrl(c)) v+=d.untapT; } if(w==='p'&&c.d.unblockedP&&c.attacking&&!c.wasBlocked) v+=c.d.unblockedP; for(const h of g.bf) if(h.holds&&h.tapped&&h.holds.iid===c.iid) v+=h.holds[w]||0; return v; }
-function pow(c){ let v=(c.baseOv?c.baseOv.p:c.d.dyn?c.d.dyn(c):(c.animated?c.animated.p:(c.form?c.form.p:(animAura(c)?cmcOf(c.d):(staticAnim(c)?staticAnim(c).p:(c.d.p||0))))))+c.counters+c.temp.p+(c.d.pBonus?c.d.pBonus(c):0); if(c.zone==='bf'){ v+=gmod(c,'p'); for(const a of auras(c)) v+=(a.d.aura.p||0)+(a.d.aura.pf?a.d.aura.pf(a):0); for(const a of anthems()) if(anthemOn(a,c)) v+=a.d.anthem.p; } return v; }
-function tough(c){ let v=(c.baseOv?c.baseOv.t:c.d.dyn?c.d.dyn(c):(c.animated?c.animated.t:(c.form?c.form.t:(animAura(c)?cmcOf(c.d):(staticAnim(c)?staticAnim(c).t:(c.d.t||0))))))+c.counters+(c.tcnt||0)+c.temp.t-2*(c.shk||0)+(c.d.tBonus?c.d.tBonus(c):0); if(c.zone==='bf'){ v+=gmod(c,'t'); for(const a of auras(c)) v+=(a.d.aura.t||0)+(a.d.aura.tf?a.d.aura.tf(a):0); for(const a of anthems()) if(anthemOn(a,c)) v+=a.d.anthem.t; } return v; }
+function pow(c){ let v=(c.baseOv?c.baseOv.p:c.d.dyn?c.d.dyn(c):(c.animated?c.animated.p:(c.form?c.form.p:(animAura(c)?cmcOf(c.d):(staticAnim(c)?staticAnim(c).p:(c.d.p||0))))))+c.counters+c.temp.p+(c.d.pBonus?c.d.pBonus(c):0); if(c.zone==='bf'){ v+=gmod(c,'p'); for(const a of auras(c)) v+=(a.d.aura.p||0)+(a.d.aura.pf?a.d.aura.pf(a):0); for(const a of anthems()) if(anthemOn(a,c)) v+=a.d.anthem.n?a.d.anthem.n(a,c):a.d.anthem.p; } return v; }
+function tough(c){ let v=(c.baseOv?c.baseOv.t:c.d.dyn?c.d.dyn(c):(c.animated?c.animated.t:(c.form?c.form.t:(animAura(c)?cmcOf(c.d):(staticAnim(c)?staticAnim(c).t:(c.d.t||0))))))+c.counters+(c.tcnt||0)+c.temp.t-2*(c.shk||0)+(c.d.tBonus?c.d.tBonus(c):0); if(c.zone==='bf'){ v+=gmod(c,'t'); for(const a of auras(c)) v+=(a.d.aura.t||0)+(a.d.aura.tf?a.d.aura.tf(a):0); for(const a of anthems()) if(anthemOn(a,c)) v+=a.d.anthem.n?a.d.anthem.n(a,c):a.d.anthem.t; } return v; }
 function hasKw(c,k){ if(c.hack){ const f=c.hack.from.toLowerCase()+'walk', t=c.hack.to.toLowerCase()+'walk'; if(k===f) return false; if(k===t) return hasKw0(c,f)||hasKw0(c,t); } if(c.sleight){ const f='pro'+c.sleight.from, t='pro'+c.sleight.to; if(k===f) return false; if(k===t) return hasKw0(c,f)||hasKw0(c,t); } return hasKw0(c,k); }
 function hasKw0(c,k){ if(c.temp&&c.temp.lose&&c.temp.lose.includes(k)) return false; if(k==='flying'&&c.cocoonFly) return true; if(c.zone==='bf'&&typeof g!=='undefined'&&g&&g.bf){ if(k==='flying'&&g.bf.some(a=>a.d.id==='gravity_sphere')) return false; if(k==='haste'&&isCreature(c)&&g.bf.some(a=>a.d.id==='concordant_crossroads')) return true; } if(k==='flying'&&(c.temp.noFly||(c.zone==='bf'&&g.bf.some(a=>a.loseFly&&a.attachedTo===c.iid)))) return false; if(c.grantKw&&c.grantKw.includes(k)) return true; if((c.permKw&&c.permKw.includes(k))||c.gabKw===k) return true; if(k==='banding'&&c.d.id==='wall_of_caltrops'&&c.blocking!=null){ const a0=byIid(c.blocking); if(a0&&a0.blockedBy.length>=2&&a0.blockedBy.every(i=>{ const b0=byIid(i); return b0&&/Wall/.test(b0.d.sub||''); })) return true; } if(c.d.kw.includes(k)||c.temp.kw.includes(k)) return true; if(c.zone==='bf'){ for(const a of auras(c)) if(a.d.aura.kw&&a.d.aura.kw.includes(k)) return true; for(const a of anthems()) if(a.d.anthem.grant===k&&anthemOn(a,c)) return true; } return false; }
 function protectedFrom(c,src){ if(!src) return false; for(const col of colorsOfD(src.d)) if(hasKw(c,'pro'+col)) return true; return false; }
@@ -2548,7 +2612,8 @@ function tObj(ref){ return ref.kind==='player'?{kind:'player',pid:ref.pid}:byIid
 function damageRef(src,ref,n){ dealDamage(src,tObj(ref),n); }
 function addShield(ref,n){ if(ref.kind==='player'){ g.players[ref.pid].shield+=n; log(`The next ${n} damage to ${playerName(ref.pid)} is prevented this turn.`); } else { const t=byIid(ref.iid); if(t&&onBf(t)){ t.shield+=n; log(`The next ${n} damage to ${t.d.name} is prevented this turn.`); } } }
 function sacrifice(c){ c.wasSac=true; log(`${playerName(ctrl(c))} sacrifices ${c.d.name}.`); moveTo(c,'graveyard'); }
-function spiritLink(src,n){ if(src&&src.zone==='bf'&&(src.d.lifelink||auras(src).some(a=>a.d.aura.link))) gainLife(ctrl(src),n); }
+function spiritLink(src,n){ if(src&&src.zone==='bf'&&(src.d.lifelink||auras(src).some(a=>a.d.aura.link))) gainLife(ctrl(src),n); if(src&&src.zone==='bf'&&isCreature(src)&&n>0) for(const a of [...g.bf]) if(a.d.id==='noble_purpose'&&ctrl(a)===ctrl(src)){ log('Noble Purpose: '+playerName(ctrl(a))+' gains '+n+' life.'); gainLife(ctrl(a),n); } }
+function piracy(src,pid){ if(!src||!isCreature(src)) return; for(const a of [...g.bf]) if(a.d.id==='coastal_piracy'&&ctrl(a)===ctrl(src)&&ctrl(src)!==pid){ log('Coastal Piracy: '+playerName(ctrl(a))+' draws a card.'); drawCards(ctrl(a),1); } }
 function lichHit(pid,n){ const P=g.players[pid]; const all=g.bf.filter(k=>ctrl(k)===pid&&!k.copy); if(all.length<n){ P.lichLost=true; log(`${P.name} cannot sacrifice enough permanents and loses (Lich).`); return; }
   const rank=k=>k.d.id==='lich'?1000:(isLand(k)?(k.d.basic?0:5):isCreature(k)?20+val(k):10);
   for(const k of all.sort((a,b)=>rank(a)-rank(b)).slice(0,n)) sacrifice(k); }
@@ -2589,10 +2654,10 @@ function dealDamage(src,t,n,combat){
     if(ci>=0){ P.cop.splice(ci,1); log(`${src.d.name}'s damage to ${P.name} is prevented.`); return; }
     if(P.shield>0){ const pv=Math.min(n,P.shield); P.shield-=pv; n-=pv; log(`${pv} damage to ${P.name} is prevented.`); if(n<=0) return; }
     if(src.zone==='bf') for(const a of g.bf) if(a.d.backfire&&a.attachedTo===src.iid&&ctrl(a)===t.pid){ log(`Backfire deals ${n} damage to ${playerName(ctrl(src))}.`); dealDamage(a,{kind:'player',pid:ctrl(src)},n); }
-    if(g.bf.some(k=>k.d.id==='lich'&&ctrl(k)===t.pid)){ P.dmgTurn=(P.dmgTurn||0)+n; log(`${src.d.name} deals ${n} damage to ${P.name} — Lich: sacrifice ${n} permanent${n===1?'':'s'}.`); lichHit(t.pid,n); if(combat) src.hitOpp=true; if(combat&&src.d.onHit) src.d.onHit(src,t.pid); spiritLink(src,n); return; }
+    if(g.bf.some(k=>k.d.id==='lich'&&ctrl(k)===t.pid)){ P.dmgTurn=(P.dmgTurn||0)+n; log(`${src.d.name} deals ${n} damage to ${P.name} — Lich: sacrifice ${n} permanent${n===1?'':'s'}.`); lichHit(t.pid,n); if(combat) src.hitOpp=true; if(combat&&src.d.onHit) src.d.onHit(src,t.pid); spiritLink(src,n); if(combat) piracy(src,t.pid); return; }
     for(const k of g.bf) if(k.d.id==='living_artifact'&&ctrl(k)===t.pid) k.vit=(k.vit||0)+n;
     if(P.life>=1&&P.life-n<1&&g.bf.some(k=>k.d.lifeFloor&&ctrl(k)===t.pid)){ n=Math.max(0,P.life-1); log(`Ali from Cairo: ${P.name}'s life can't drop below 1.`); if(n<=0) return; }
-    P.life-=n; sorcRec(src,n); P.dmgTurn=(P.dmgTurn||0)+n; if(isArtifact(src)) P.artDmgTurn=(P.artDmgTurn||0)+n; log(`${src.d.name} deals ${n} damage to ${P.name}.`); if(combat) src.hitOpp=true; if(combat&&src.d.onHit) src.d.onHit(src,t.pid); spiritLink(src,n); return; }
+    P.life-=n; sorcRec(src,n); P.dmgTurn=(P.dmgTurn||0)+n; if(isArtifact(src)) P.artDmgTurn=(P.artDmgTurn||0)+n; log(`${src.d.name} deals ${n} damage to ${P.name}.`); if(combat) src.hitOpp=true; if(combat&&src.d.onHit) src.d.onHit(src,t.pid); spiritLink(src,n); if(combat) piracy(src,t.pid); return; }
   if(!onBf(t)) return;
   if(!NP&&protectedFrom(t,src)){ log(`Damage to ${t.d.name} is prevented (protection).`); return; }
   if(!NP&&t.d.horse&&g.curIt&&g.curIt.kind==='spell'&&g.curIt.card===src&&(g.curIt.targets||[]).some(r=>r.kind==='card'&&r.iid===t.iid)&&g.bf.some(k=>k!==t&&isCreature(k)&&ctrl(k)===ctrl(t))){ log('Damage to Bronze Horse from a spell that targets it is prevented.'); return; }
@@ -2734,6 +2799,7 @@ function landTapTriggers(c,p,color){
     else if(a.d.id==='mana_flare') addMana(p,color);
     else if(a.d.id==='gauntlet_of_might'&&hasLT(c,'Mountain')) addMana(p,'R');
     else if(a.d.id==='lifetap'&&ctrl(a)!==p&&hasLT(c,'Forest')) gainLife(ctrl(a),1);
+    else if(a.d.id==='sanctimony'&&ctrl(a)!==p&&hasLT(c,'Mountain')) gainLife(ctrl(a),1);
     else if(a.d.id==='lifeblood'&&ctrl(a)!==p&&hasLT(c,'Mountain')) gainLife(ctrl(a),1);
     if(a.attachedTo===c.iid&&a.d.onLandTap) a.d.onLandTap(a,c,p);
   }
@@ -2812,7 +2878,7 @@ function abilityUsable(p,c,ab){
   return true;
 }
 function kismetTap(c,p){ if(g.bf.some(k=>k.d.id==='kismet'&&ctrl(k)!==p)) c.tapped=true; }
-function playLand(p,c){ if(wormsOn()||cityBan(c)) return; c.controller=p; if(g.landsPlayed>=1) for(const a of g.bf) if(a.d.id==='fastbond'&&ctrl(a)===p) dealDamage(a,{kind:'player',pid:p},1); moveTo(c,'bf'); c.controller=p; kismetTap(c,p); g.landsPlayed++; log(`${playerName(p)} plays ${c.d.name}.`,p); for(const a of [...g.bf]) if(a.d.id==='ankh_of_mishra') dealDamage(a,{kind:'player',pid:p},2); }
+function playLand(p,c){ if(wormsOn()||cityBan(c)) return; c.controller=p; if(g.landsPlayed>=1) for(const a of g.bf) if(a.d.id==='fastbond'&&ctrl(a)===p) dealDamage(a,{kind:'player',pid:p},1); moveTo(c,'bf'); c.controller=p; kismetTap(c,p); if(c.d.tappedLand) c.tapped=true; g.landsPlayed++; log(`${playerName(p)} plays ${c.d.name}.`,p); for(const a of [...g.bf]) if(a.d.id==='ankh_of_mishra') dealDamage(a,{kind:'player',pid:p},2); }
 function describeTargets(ts){ return ts.map(r=>r.kind==='player'?playerName(r.pid):r.kind==='stack'?(g.stack.find(s=>s.sid===r.sid)||{name:'a spell'}).name:(byIid(r.iid)||{d:{name:'?'}}).d.name).join(', '); }
 function castSpell(p,c,targets,x){
   if(cityBan(c)) return false;
@@ -2959,7 +3025,7 @@ async function runTurn(){
   const lim=new Set(); const limit=(on,f)=>{ if(!on) return; const l=g.bf.filter(k=>ctrl(k)===ap&&k.tapped&&f(k)); for(const k of l.slice(1)) lim.add(k); };
   limit(g.bf.some(k=>k.d.id==='damping_field'),isArtifact); limit(g.bf.some(k=>k.d.id==='smoke'),isCreature);
   const meek=g.bf.some(k=>k.d.id==='meekstone');
-  for(const c of g.bf) if(ctrl(c)===ap){ const stay=lim.has(c)||!!c.coffin||(c.glyph>0)||(isCreature(c)&&/Legendary/.test(c.d.type)&&g.bf.some(k=>k.d.id==='arena_of_the_ancients'))||(g.bf.some(k=>k.d.id==='magnetic_mountain')&&isCreature(c)&&hasColor(c,'U'))||(c.holds&&c.tapped&&!c.holds.anyTap)||auras(c).some(a=>a.d.aura&&(a.d.aura.noUntap||(a.d.aura.noUntapIf&&a.d.aura.noUntapIf(a,c))))||g.bf.some(h=>h.holds&&h.holds.lock&&h.tapped&&h.holds.iid===c.iid)||(c.skipUntap>0)||(meek&&isCreature(c)&&pow(c)>=3)||(c.d.id==='goblin_rock_sled'&&c.attackedTurn===g.turn-2); if(!c.d.noUntap&&!stasis&&!stay&&(!orb||!isLand(c)||orbPick.has(c))) c.tapped=false; c.sick=false; }
+  for(const c of g.bf) if(ctrl(c)===ap){ const stay=lim.has(c)||(isLand(c)&&hasLT(c,'Island')&&g.bf.some(k=>k.d.id==='choke'))||!!c.coffin||(c.glyph>0)||(isCreature(c)&&/Legendary/.test(c.d.type)&&g.bf.some(k=>k.d.id==='arena_of_the_ancients'))||(g.bf.some(k=>k.d.id==='magnetic_mountain')&&isCreature(c)&&hasColor(c,'U'))||(c.holds&&c.tapped&&!c.holds.anyTap)||auras(c).some(a=>a.d.aura&&(a.d.aura.noUntap||(a.d.aura.noUntapIf&&a.d.aura.noUntapIf(a,c))))||g.bf.some(h=>h.holds&&h.holds.lock&&h.tapped&&h.holds.iid===c.iid)||(c.skipUntap>0)||(meek&&isCreature(c)&&pow(c)>=3)||(c.d.id==='goblin_rock_sled'&&c.attackedTurn===g.turn-2); if(!c.d.noUntap&&!stasis&&!stay&&(!orb||!isLand(c)||orbPick.has(c))) c.tapped=false; c.sick=false; }
   for(const c of g.bf) if(ctrl(c)===ap&&c.skipUntap>0) c.skipUntap--;
   render(); await pause(200);
   setStep('upkeep');
@@ -3030,12 +3096,15 @@ async function givePriority(p,opts){ return g.players[p].remote?remotePriority(p
 function canAttack(c,p){ if(c.cantAttackTurn===g.turn||g.noAtkTurn===g.turn) return false; if(g.bf.some(m=>m.d.id==='arboria')&&g.players[1-p].actTurn!==g.turn-1) return false; if(g.players[1-p].sanct&&!hasKw(c,'flying')&&!hasKw(c,'islandwalk')) return false; if(c.d.id==='giant_turtle'&&c.attackedTurn===g.turn-2) return false; if(g.bf.some(m=>m.d.id==='moat')&&!hasKw(c,'flying')) return false; if((c.d.id==='sea_serpent'||c.d.id==='dandan')&&!g.bf.some(l=>isLand(l)&&hasLT(l,'Island')&&ctrl(l)===1-p)) return false;
   if(c.d.needLand&&!g.bf.some(l=>isLand(l)&&hasLT(l,hackW(c,c.d.needLand))&&ctrl(l)===1-p)) return false;
   if(auras(c).some(a=>a.d.aura&&a.d.aura.noAtk)) return false;
+  if(g.players[p].noCombatTurn===g.turn) return false;
+  if(g.bf.some(m=>m.d.id==='ensnaring_bridge'&&pow(c)>g.players[ctrl(m)].hand.length)) return false;
   if(g.bf.some(k=>k.d.id==='akron_legionnaire'&&ctrl(k)===p)&&c.d.id!=='akron_legionnaire'&&!isArtifact(c)) return false;
   if(g.bf.some(k=>k.d.id==='evil_eye_of_orms_by_gore'&&ctrl(k)===p)&&c.d.id!=='evil_eye_of_orms_by_gore') return false;
-  return isCreature(c)&&ctrl(c)===p&&!c.tapped&&(!c.sick||hasKw(c,'haste'))&&(!hasKw(c,'defender')||hasKw(c,'canAtk')); }
+  return isCreature(c)&&ctrl(c)===p&&!c.tapped&&(!c.sick||hasKw(c,'haste'))&&(!hasKw(c,'defender')||hasKw(c,'canAtk')||(/Wall/.test(c.d.sub||'')&&g.bf.some(m=>m.d.id==='rolling_stones'))); }
 const WALKS={forestwalk:'Forest',islandwalk:'Island',swampwalk:'Swamp',mountainwalk:'Mountain',plainswalk:'Plains'};
 function canBlock(b,a){
   if(!isCreature(b)||b.tapped||!onBf(b)||ctrl(b)===ctrl(a)) return false;
+  if(auras(b).some(u=>u.d.aura&&u.d.aura.noBlk)) return false;
   if(a.temp&&a.temp.noWall&&/Wall/.test(b.d.sub||'')) return false;
   if(hasKw(a,'flying')&&!hasKw(b,'flying')&&!hasKw(b,'reach')) return false;
   if(b.d.id==='cloud_pirates'&&!hasKw(a,'flying')) return false;
@@ -3120,7 +3189,7 @@ async function combat(){
     const kills=new Set();
     for(const a of live()){ for(const i of a.blockedBy){ const b=byIid(i); if(!b||!onBf(b)) continue;
       const ck=(x,o,role)=>(x.d.combatKill&&x.d.combatKill(o,role))||auras(x).some(u=>u.d.aura.venom&&!/Wall/.test(o.d.sub||''));
-      if(ck(a,b,'atk')) kills.add(b); if(ck(b,a,'blk')) kills.add(a); } }
+      if(ck(a,b,'atk')) kills.add(b); if(ck(b,a,'blk')) kills.add(a); if(b.d.selfDieBlk) kills.add(b); } }
     for(const k of kills) if(onBf(k)){ log(`${k.d.name} is destroyed at end of combat.`); destroy(k); }
     if(kills.size){ sba(); render(); }
     for(const gd of (g.glyphDoom||[]).splice(0)) if(gd.turn===g.turn){ for(const h of (gd.wall.blkHist||[])) if(h.turn===g.turn){ const v=byIid(h.iid); if(v&&onBf(v)){ log(`${v.d.name} is destroyed at end of combat (Glyph of Doom).`); destroy(v); } } sba(); render(); }
@@ -3513,6 +3582,12 @@ function aiEvalCard(p,c,S){
       if(S.oppAttack){ const k=oppCr.filter(k=>k.attacking&&lg(k))[0]; if(k&&val(k)>=7) return R(40+val(k),[ref(k)]); }
       return null;
     }
+    case 'bribery': { if(!S.main) return null; return O&&g.players[O].library.some(k=>isCreatureD(k.d))?R(70):null; }
+    case 'coercion': return S.main&&OP.hand.length>=1?R(30+Math.min(20,OP.hand.length*3)):null;
+    case 'drawN': return (S.main||S.oppEnd)?R(d.aiScore||45):null;
+    case 'anthemAll': { if(!S.main) return null; return myCr.length>=2?R(22+myCr.length*5):null; }
+    case 'pacify': { if(!S.main) return null; const k=oppCr.filter(lg)[0]; return k&&val(k)>=4?R(35+val(k)*3,[ref(k)]):null; }
+    case 'chastise': { const a=oppCr.filter(k=>k.attacking&&lg(k)).sort((x,y)=>pow(y)-pow(x))[0]; return a&&(pow(a)>=3||S.top===null&&OP.life>=0&&pow(a)>=P.life-2)?R(60+pow(a)*3,[ref(a)]):null; }
     case 'draw3': return (S.main||S.oppEnd)?R(55,[me]):null;
     case 'ritual': {
       if(!S.main) return null;
@@ -3654,6 +3729,7 @@ function aiEvalAbility(p,c,ab,S){
     case 'pandora': { if(!S.my||g.step!=='main2'||S.top) return null; const sv=l=>l.reduce((a,k)=>a+val(k),0); return sv(myCr)<=sv(oppCr)?R(10):null; }
     case 'shimian': { if(!S.block||S.my||S.top) return null; if(oppCr.length<1) return null; const a=oppCr.filter(k=>k.attacking&&!k.wasBlocked&&lg(k)).sort((x,y)=>pow(y)-pow(x))[0]; return a&&pow(a)>=4&&pow(a)<tough(c)-c.damage?R(100+pow(a),[ref(a)]):null; }
     case 'steal': { if(!S.main) return null; const k=oppCr.find(k=>lg(k)&&val(k)>=5); return k?R(60+val(k)*3,[ref(k)]):null; }
+    case 'draw1': return (S.oppEnd||(S.my&&g.step==='main2'&&!S.top))?R(30):null;
     case 'preacher': return S.main&&oppCr.length?R(25):null;
     case 'scarwood': { if(!S.main) return null; const k=g.bf.filter(k=>isArtifact(k)&&ctrl(k)===O&&lg(k)&&cmcOf(k.d)>=3).sort((a,b)=>cmcOf(b.d)-cmcOf(a.d))[0]; return k?R(35+cmcOf(k.d)*2,[ref(k)]):null; }
     case 'matrix': { if(!(S.my&&g.step==='upkeep'&&!S.top)) return null; const k=myCr.find(k=>lg(k)&&!(k.cn&&k.cn.matrix)&&val(k)>=5); return k?R(30,[ref(k)]):null; }
