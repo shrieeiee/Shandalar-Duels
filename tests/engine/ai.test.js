@@ -150,6 +150,11 @@ sections.push(['AI uses v57 abilities: Angelic Page, Cyclops, Hornclaw, Assembly
  reset(); g.active=1; g.step='block'; const aw=mk('assembly_worker',1); aw.attacking=true; g.players[0].life=3; assert.ok(await run().catch(e=>true)); assert.ok(E.pow(aw)===3||g.over||g.players[0].life<=0);
  // Hornclaw: evasive lethal attack
  reset(); g.step='attack'; for(let i=0;i<6;i++) mk('forest',1); const hc=mk('coastal_hornclaw',1); hc.attacking=true; mk('hill_giant',0); g.players[0].life=3; assert.ok(await run()); assert.ok(E.hasKw(hc,'flying'));
+ // Blessed Reversal / Boil / Balance of Power / Call of the Wild itself
+ reset(); g.active=0; g.step='attack'; for(let i=0;i<2;i++) mk('plains',1); for(let i=0;i<3;i++){ const a=mk('hill_giant',0); a.attacking=true; } mk('blessed_reversal',1,'hand'); assert.ok(await run()); assert.strictEqual(g.players[1].life,29);
+ reset(); for(let i=0;i<4;i++) mk('mountain',1); for(let i=0;i<4;i++) mk('island',0); mk('boil',1,'hand'); assert.ok(await run()); assert.strictEqual(g.bf.filter(k=>k.d.id==='island').length,0);
+ reset(); mk('island',1); mk('island',1); mk('island',1); mk('island',1); mk('island',1); for(let i=0;i<5;i++) mk('forest',0,'hand'); for(let i=0;i<10;i++) mk('forest',1,'library'); mk('balance_of_power',1,'hand'); assert.ok(await run()); assert.strictEqual(g.players[1].hand.length,5);
+ reset(); for(let i=0;i<4;i++) mk('forest',1); mk('call_of_the_wild',1,'hand'); assert.ok(await run()); assert.ok(g.bf.some(k=>k.d.id==='call_of_the_wild'));
  // Call of the Wild with creature-heavy library
  reset(); g.step='end'; g.active=0; mk('call_of_the_wild',1); for(let i=0;i<10;i++){ mk('grizzly_bears',1,'library'); } g.players[1].pool={W:0,U:0,B:0,R:0,G:4,C:0}; for(let i=0;i<4;i++) mk('forest',1); assert.ok(await run()); assert.ok(g.bf.filter(k=>k.d.id==='grizzly_bears').length>=1);
 }]);

@@ -1,6 +1,6 @@
 # Credits
 
-- **Shandalar Duels** © 2026 shrieeiee, GNU GPL v3.0 or later. Unofficial fan project, not affiliated with Wizards of the Coast. *Magic: The Gathering* is property of Wizards of the Coast.
+- **Shandalar Duels** © 2026 the Shandalar Duels contributors, GNU GPL v3.0 or later. Unofficial fan project, not affiliated with Wizards of the Coast. *Magic: The Gathering* is property of Wizards of the Coast.
 - Inspired by *Magic: The Gathering – Shandalar* (MicroProse, 1997) and the open-source **ShandalarGodot** project by b0realis, whose card scripts and docs guided many rule implementations.
 
 ## Art

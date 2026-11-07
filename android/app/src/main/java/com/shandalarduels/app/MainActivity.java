@@ -1,4 +1,4 @@
-package com.shrieeiee.shandalar;
+package com.shandalarduels.app;
 import android.app.Activity; import android.os.Bundle; import android.view.View; import android.webkit.*;
 public class MainActivity extends Activity {
     private WebView wv;

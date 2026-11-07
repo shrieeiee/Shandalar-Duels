@@ -16,7 +16,7 @@ The game has its own built-in artwork. In the Windows/Linux/SteamOS builds, open
 
 ## Licence and disclaimer
 
-The code is released under the **GNU General Public License v3.0** (see `LICENSE`). Copyright (C) 2026 shrieeiee.
+The code is released under the **GNU General Public License v3.0** (see `LICENSE`). Copyright (C) 2026 the Shandalar Duels contributors.
 
 This is an unofficial, non-commercial fan project, not affiliated with or endorsed by Wizards of the Coast or MicroProse. *Magic: The Gathering*, its card names and rules text are the property of Wizards of the Coast. The card artwork in the game is procedurally generated and original. The GPL covers the code only, not any Wizards of the Coast intellectual property.
 

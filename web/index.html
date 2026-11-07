@@ -1,4 +1,4 @@
-<!-- Shandalar Duels. Copyright (C) 2026 shrieeiee. Licensed under the GNU GPL v3.0 or later; see LICENSE. Unofficial fan project, not affiliated with Wizards of the Coast. -->
+<!-- Shandalar Duels. Copyright (C) 2026 the Shandalar Duels contributors. Licensed under the GNU GPL v3.0 or later; see LICENSE. Unofficial fan project, not affiliated with Wizards of the Coast. -->
 <title>Shandalar Duels</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2417,7 +2417,7 @@ Cr('angelic_page','Angelic Page','1W','Spirit Cleric',1,1,['flying'],'Flying. {T
 Cr('ardent_militia','Ardent Militia','4W','Human Soldier',2,5,['vigilance'],'Vigilance.');
 Cr('aven_cloudchaser','Aven Cloudchaser','3W','Bird Soldier',2,2,['flying'],'Flying. When Aven Cloudchaser enters, destroy target enchantment.',{etb:async x=>{ const own=ctrl(x.src); const cs=g.bf.filter(k=>/Enchantment/.test(k.d.type)&&k!==x.src); const t=await pickFrom(own,'Aven Cloudchaser','Choose an enchantment to destroy.',cs,k=>k.d.name+' ('+playerName(ctrl(k))+')',it=>it.filter(k=>ctrl(k)!==own).sort((a,b)=>cmcOf(b.d)-cmcOf(a.d))[0]||it[0]); if(t) { log(`Aven Cloudchaser destroys ${t.d.name}.`); destroy(t); } }});
 Cr('aven_flock','Aven Flock','3W','Bird',2,3,['flying'],'Flying. {W}: Aven Flock gets +0/+1 until end of turn.',{abilities:[pumpAb('W',0,1)]});
-D({id:'blessed_reversal',name:'Blessed Reversal',cost:'1W',type:'Instant',ai:'none',text:'You gain 3 life for each creature attacking you.',resolve:x=>{ const n=g.bf.filter(c=>isCreature(c)&&c.attacking&&ctrl(c)!==x.ctrl).length; if(n) gainLife(x.ctrl,3*n); else log('No creatures are attacking.'); }});
+D({id:'blessed_reversal',name:'Blessed Reversal',cost:'1W',type:'Instant',ai:'bless',text:'You gain 3 life for each creature attacking you.',resolve:x=>{ const n=g.bf.filter(c=>isCreature(c)&&c.attacking&&ctrl(c)!==x.ctrl).length; if(n) gainLife(x.ctrl,3*n); else log('No creatures are attacking.'); }});
 for(const [id,name,pr,sub] of [['urborg_volcano','Urborg Volcano','BR'],['elfhame_palace','Elfhame Palace','GW'],['shivan_oasis','Shivan Oasis','RG'],['coastal_tower','Coastal Tower','WU'],['salt_marsh','Salt Marsh','UB']])
   D({id,name,cost:'',type:'Land',produce:pr,tappedLand:true,text:`${name} enters tapped. {T}: Add {${pr[0]}} or {${pr[1]}}.`});
 D({id:'beast_of_burden',name:'Beast of Burden',cost:'6',type:'Artifact Creature',sub:'Golem',p:0,t:0,dyn:c=>c.zone==='bf'?g.bf.filter(k=>isCreature(k)).length:0,ai:'creature',text:"Beast of Burden's power and toughness are each equal to the number of creatures on the battlefield."});
@@ -2433,13 +2433,13 @@ Cr('anaba_shaman','Anaba Shaman','3R','Minotaur Shaman',2,2,[],'{R}, {T}: Anaba 
 Cr('archivist','Archivist','2UU','Human Wizard',1,1,[],'{T}: Draw a card.',{abilities:[{tap:true,ai:'draw1',resolve:x=>drawCards(x.ctrl,1)}]});
 Cr('avatar_of_hope','Avatar of Hope','4WW','Avatar',4,9,['flying'],'If you have 3 or less life, this spell costs {6} less to cast. Flying.');
 Cr('aven_fisher','Aven Fisher','3U','Bird Archer',2,2,['flying'],'Flying. When Aven Fisher dies, you may draw a card.',{onDie:(c,own)=>drawCards(own,1)});
-D({id:'balance_of_power',name:'Balance of Power',cost:'3UU',type:'Sorcery',target:TG.player,ai:'none',text:'If target opponent has more cards in hand than you, draw cards equal to the difference.',resolve:x=>{ const t=x.targets[0]; if(!t||t.kind!=='player'||t.pid===x.ctrl) return; const d=g.players[t.pid].hand.length-g.players[x.ctrl].hand.length; if(d>0) drawCards(x.ctrl,d); }});
+D({id:'balance_of_power',name:'Balance of Power',cost:'3UU',type:'Sorcery',target:TG.player,ai:'bop',text:'If target opponent has more cards in hand than you, draw cards equal to the difference.',resolve:x=>{ const t=x.targets[0]; if(!t||t.kind!=='player'||t.pid===x.ctrl) return; const d=g.players[t.pid].hand.length-g.players[x.ctrl].hand.length; if(d>0) drawCards(x.ctrl,d); }});
 Cr('balduvian_barbarians','Balduvian Barbarians','1RR','Human Barbarian',3,2,[],'');
 D({id:'blanchwood_armor',name:'Blanchwood Armor',cost:'G',type:'Enchantment',sub:'Aura',target:TG.creature,aura:{pf:a=>forests(ctrl(a)),tf:a=>forests(ctrl(a))},ai:'aura',text:'Enchant creature. Enchanted creature gets +1/+1 for each Forest you control.'});
 D({id:'blaze',name:'Blaze',cost:'XR',type:'Sorcery',target:TG.any,ai:'xburn',text:'Blaze deals X damage to any target.',resolve:x=>{ const t=x.targets[0]; if(!t) return; if(t.kind==='player') dealDamage({zone:'stack',d:{name:'Blaze'},temp:{},kw:[]},t,x.x); else { const c=byIid(t.iid); if(c&&onBf(c)) dealDamage({zone:'stack',d:{name:'Blaze'},temp:{},kw:[]},c,x.x); } }});
 Cr('blinding_angel','Blinding Angel','2WW','Angel',3,3,['flying'],"Flying. Whenever Blinding Angel deals combat damage to a player, that player skips their next combat phase.",{onHit:(src,pid)=>{ g.players[pid].noCombatTurn=g.turn+1; log(`${g.players[pid].name} will skip their next combat phase.`); }});
 Cr('bloodshot_cyclops','Bloodshot Cyclops','5R','Cyclops Giant',4,4,[],"{T}, Sacrifice a creature: Bloodshot Cyclops deals damage equal to the sacrificed creature's power to any target.",{abilities:[{cost:'',tap:true,sac:{spec:TG.myCreature},target:TG.any,ai:'none',label:'{T}, sacrifice a creature: damage = its power',resolve:x=>{ const n=x.item?x.item.sacPow:(x.sacPow||0); if(n>0) damageRef(x.src,x.targets[0],n); log(`Bloodshot Cyclops deals ${n} damage.`); }}]});
-D({id:'boil',name:'Boil',cost:'3R',type:'Instant',ai:'none',text:'Destroy all Islands.',resolve:x=>{ for(const l of g.bf.filter(l=>isLand(l)&&hasLT(l,'Island'))) destroy(l); }});
+D({id:'boil',name:'Boil',cost:'3R',type:'Instant',ai:'boil',text:'Destroy all Islands.',resolve:x=>{ for(const l of g.bf.filter(l=>isLand(l)&&hasLT(l,'Island'))) destroy(l); }});
 D({id:'brass_herald',name:'Brass Herald',cost:'6',type:'Artifact Creature',sub:'Golem',p:2,t:2,anthem:{fn:(a,c)=>!!a.heraldType&&(c.d.sub||'').split(' ').includes(a.heraldType),p:1,t:1},ai:'creature',text:'As Brass Herald enters, choose a creature type. When it enters, reveal the top four cards of your library. Put all creature cards of the chosen type revealed this way into your hand and the rest on the bottom of your library in any order. Creatures of the chosen type get +1/+1.',
   etb:async x=>{ const c=x.src, own=ctrl(c), P=g.players[own]; const types=[...new Set([...P.library,...P.hand,...g.bf].filter(k=>isCreatureD(k.d)).flatMap(k=>(k.d.sub||'').split(' ')).filter(Boolean))].sort();
     if(!types.length) return; const cnt=t=>P.library.slice(-4).filter(k=>isCreatureD(k.d)&&(k.d.sub||'').split(' ').includes(t)).length+P.hand.filter(k=>isCreatureD(k.d)&&(k.d.sub||'').split(' ').includes(t)).length*0.01+g.bf.filter(k=>ctrl(k)===own&&isCreature(k)&&(k.d.sub||'').split(' ').includes(t)).length*0.01;
@@ -2454,7 +2454,7 @@ D({id:'bribery',name:'Bribery',cost:'3UU',type:'Sorcery',ai:'bribery',text:"Sear
     log(pick?`${playerName(own)} takes ${pick.d.name} from ${O.name}'s library.`:`${playerName(own)} finds no creature in ${O.name}'s library.`,own);
     if(pick){ O.library=O.library.filter(k=>k!==pick); pick.zone='library'; moveTo(pick,'bf'); pick.controller=own; pick.sick=true; if(pick.d.etb) pick.d.etb({src:pick,ctrl:own}); }
     O.library=shuffle(O.library); }});
-D({id:'call_of_the_wild',name:'Call of the Wild',cost:'2GG',type:'Enchantment',ai:'none',text:"{2}{G}{G}: Reveal the top card of your library. If it's a creature card, put it onto the battlefield. Otherwise, put it into your graveyard.",
+D({id:'call_of_the_wild',name:'Call of the Wild',cost:'2GG',type:'Enchantment',ai:'artifact',aiScore:14,text:"{2}{G}{G}: Reveal the top card of your library. If it's a creature card, put it onto the battlefield. Otherwise, put it into your graveyard.",
   abilities:[{cost:'2GG',ai:'none',resolve:x=>{ const P=g.players[x.ctrl]; if(!P.library.length) return; const k=P.library[P.library.length-1]; log(`${P.name} reveals ${k.d.name}.`,x.ctrl); if(isCreatureD(k.d)){ moveTo(k,'bf'); k.controller=x.ctrl; k.sick=true; if(k.d.etb) k.d.etb({src:k,ctrl:x.ctrl}); } else moveTo(k,'graveyard'); }}]});
 Cr('canopy_spider','Canopy Spider','1G','Spider',1,3,['reach'],'Reach.');
 Cr('canyon_wildcat','Canyon Wildcat','1R','Cat',2,1,['mountainwalk'],'Mountainwalk.');
@@ -3584,6 +3584,9 @@ function aiEvalCard(p,c,S){
     }
     case 'bribery': { if(!S.main) return null; return O&&g.players[O].library.some(k=>isCreatureD(k.d))?R(70):null; }
     case 'coercion': return S.main&&OP.hand.length>=1?R(30+Math.min(20,OP.hand.length*3)):null;
+    case 'bless': { const n=oppCr.filter(k=>k.attacking).length; return (S.oppAttack||S.block)&&!S.my&&!S.top&&n>=2&&(n>=3||P.life<=10)?R(40+n*6):null; }
+    case 'boil': { if(!S.main&&!S.oppEnd) return null; const isl=l=>isLand(l)&&hasLT(l,'Island'); const theirs=g.bf.filter(l=>isl(l)&&ctrl(l)!==p).length, mine=g.bf.filter(l=>isl(l)&&ctrl(l)===p).length; return theirs>=3&&theirs-mine>=3?R(30+theirs*5):null; }
+    case 'bop': { const d=OP.hand.length-P.hand.length; return S.main&&d>=3?R(40+d*6,[face]):null; }
     case 'drawN': return (S.main||S.oppEnd)?R(d.aiScore||45):null;
     case 'anthemAll': { if(!S.main) return null; return myCr.length>=2?R(22+myCr.length*5):null; }
     case 'pacify': { if(!S.main) return null; const k=oppCr.filter(lg)[0]; return k&&val(k)>=4?R(35+val(k)*3,[ref(k)]):null; }
@@ -4175,7 +4178,7 @@ function openModal(html){ const m=$('#modal'); m.innerHTML=`<div class="mbox" ro
   setTimeout(()=>{ const f=m.querySelector('button,[tabindex="0"],input,select,textarea'); if(f&&!m.hidden&&!m.contains(document.activeElement)) try{ f.focus({preventScroll:true}); }catch(e){} },30); }
 function creditsModal(){
   openModal(`<h2>Credits</h2><div class="credits" style="line-height:1.55;font-size:14px;max-height:62vh;overflow:auto">
-  <p><b>Shandalar Duels</b> &copy; 2026 shrieeiee &middot; GNU GPL v3.0 or later. An unofficial fan project, not affiliated with or endorsed by Wizards of the Coast. <i>Magic: The Gathering</i> and its card names are property of Wizards of the Coast.</p>
+  <p><b>Shandalar Duels</b> &copy; 2026 the Shandalar Duels contributors &middot; GNU GPL v3.0 or later. An unofficial fan project, not affiliated with or endorsed by Wizards of the Coast. <i>Magic: The Gathering</i> and its card names are property of Wizards of the Coast.</p>
   <p><b>Inspired by</b> <i>Sorcery: The Gathering / Magic: The Gathering &ndash; Shandalar</i> (MicroProse, 1997) and the open-source <b>ShandalarGodot</b> project by b0realis, whose card scripts and documentation guided how many cards and rules were implemented here.</p>
   <p><b>Digital adaptations</b>: Falling Star, Shahrazad and Word of Command cannot be played exactly as printed in a digital game. Falling Star flips coins instead of dexterity; Shahrazad plays a real AI-vs-AI subgame of your libraries; Word of Command lets you choose from the opponent's hand. They are never given out as adventure rewards.</p>
   <p><b>Pixel art</b> (CC0 / public domain, credit given with thanks):<br>
